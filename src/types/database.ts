@@ -1,0 +1,101 @@
+export interface User {
+  id: string;
+  email: string;
+  phone_number?: string;
+  stripe_customer_id?: string;
+  account_balance: number;
+}
+
+export interface Child {
+  id: string;
+  parent_id: string;
+  name: string;
+  class_info?: string;
+  birthday?: string;
+  profile_photo_url?: string;
+  created_at: string;
+}
+
+export interface MenuItem {
+  id: string;
+  name: string;
+  description?: string;
+  base_price: number;
+  category?: string;
+  is_full_order_only: boolean;
+  has_tofu_option: boolean;
+}
+
+export interface Order {
+  id: string;
+  parent_id: string;
+  child_id: string;
+  order_date: string;
+  total_amount: number;
+  status: "pending_payment" | "paid" | "cancelled";
+  fulfillment_status: "pending_delivery" | "delivered";
+  special_requests?: string;
+  created_at: string;
+}
+
+export interface OrderDetail {
+  id: string;
+  order_id: string;
+  menu_item_id: string;
+  quantity: number;
+  portion_type: "Full Order" | "Half Order";
+}
+
+export interface Favorite {
+  id: string;
+  parent_id: string;
+  template_name: string;
+  order_details: Record<string, unknown>;
+}
+
+export interface CartItem {
+  menu_item: MenuItem;
+  quantity: number;
+  portion_type: "Full Order" | "Half Order";
+  unit_price: number;
+}
+
+export interface Database {
+  public: {
+    Tables: {
+      users: {
+        Row: User;
+        Insert: Omit<User, "account_balance"> & { account_balance?: number };
+        Update: Partial<User>;
+      };
+      children: {
+        Row: Child;
+        Insert: Omit<Child, "id" | "created_at">;
+        Update: Partial<Omit<Child, "id" | "created_at">>;
+      };
+      menu_items: {
+        Row: MenuItem;
+        Insert: Omit<MenuItem, "id">;
+        Update: Partial<Omit<MenuItem, "id">>;
+      };
+      orders: {
+        Row: Order;
+        Insert: Omit<
+          Order,
+          "id" | "created_at" | "status" | "fulfillment_status"
+        >;
+        Update: Partial<Omit<Order, "id" | "created_at">>;
+      };
+      order_details: {
+        Row: OrderDetail;
+        Insert: Omit<OrderDetail, "id">;
+        Update: Partial<Omit<OrderDetail, "id">>;
+      };
+      favorites: {
+        Row: Favorite;
+        Insert: Omit<Favorite, "id">;
+        Update: Partial<Omit<Favorite, "id">>;
+      };
+    };
+  };
+}
