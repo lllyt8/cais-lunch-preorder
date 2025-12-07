@@ -3,15 +3,19 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { ChevronDown } from 'lucide-react'
 import { toast } from 'sonner'
 import { useCart } from '@/hooks/use-cart'
+import { useWeekSelector } from '@/hooks/use-week-selector'
 import type { Child, MenuItem } from '@/types/database'
+import { MENU_CATEGORIES } from '@/constants/menu-categories'
+import { MenuItemCard } from '@/components/order/MenuItemCard'
 import Link from 'next/link'
+import { format } from 'date-fns'
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
 const WEEKDAY_LABELS: Record<string, string> = {
@@ -28,6 +32,10 @@ export default function OrderPage() {
   const [loading, setLoading] = useState(true)
   const [checkoutDialogOpen, setCheckoutDialogOpen] = useState(false)
   const [missingDays, setMissingDays] = useState<string[]>([])
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(['rice', 'noodles', 'dumplings', 'snacks']))
+  
+  const { getCurrentWeek } = useWeekSelector()
+  const currentWeek = getCurrentWeek()
   
   const { 
     selectedChildId, 
@@ -61,7 +69,7 @@ export default function OrderPage() {
       }
     }
 
-    // Fetch menu items
+    // Fetch all menu items (we'll filter by date on the client side)
     const { data: menuData } = await supabase
       .from('menu_items')
       .select('*')
@@ -77,6 +85,27 @@ export default function OrderPage() {
   useEffect(() => {
     fetchData()
   }, [])
+
+  // Get the actual date for the selected weekday in the current week
+  const getDateForWeekday = (weekday: string): Date => {
+    const weekdayIndex = WEEKDAYS.indexOf(weekday)
+    return currentWeek.weekDays[weekdayIndex]
+  }
+
+  // Get full date string for cart storage (YYYY-MM-DD)
+  const getFullDateString = (weekday: string): string => {
+    return format(getDateForWeekday(weekday), 'yyyy-MM-dd')
+  }
+
+  // Filter menu items by the selected date
+  const getMenuItemsForDate = (weekday: string): MenuItem[] => {
+    const dateString = getFullDateString(weekday)
+    // If menu items don't have available_date, show all items
+    // Otherwise, only show items for the specific date
+    return menuItems.filter(item => 
+      !item.available_date || item.available_date === dateString
+    )
+  }
 
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
@@ -99,19 +128,23 @@ export default function OrderPage() {
     }
     
     const price = portionType === 'Half Order' ? item.base_price - 2 : item.base_price
-    addItem(selectedChildId, selectedDate, item, portionType, price)
+    const fullDateString = getFullDateString(selectedDate)
+    addItem(selectedChildId, fullDateString, item, portionType, price)
     toast.success(`已添加 ${item.name}`)
   }
 
-  const currentCartItems = selectedChildId ? getCartItems(selectedChildId, selectedDate) : []
-  const currentCartTotal = selectedChildId ? getCartTotal(selectedChildId, selectedDate) : 0
+  // Compute cart items dynamically based on current state
+  const fullDateString = getFullDateString(selectedDate)
+  const currentCartItems = selectedChildId ? getCartItems(selectedChildId, fullDateString) : []
+  const currentCartTotal = selectedChildId ? getCartTotal(selectedChildId, fullDateString) : 0
 
   const checkMissingOrders = () => {
     if (!selectedChildId) return
 
     // Check which days are missing orders
     const missing = WEEKDAYS.filter(day => {
-      const items = getCartItems(selectedChildId, day)
+      const fullDate = getFullDateString(day)
+      const items = getCartItems(selectedChildId, fullDate)
       return items.length === 0
     })
 
@@ -129,12 +162,14 @@ export default function OrderPage() {
     // Navigate to checkout
   }
 
-  const groupedMenuItems = menuItems.reduce((acc, item) => {
-    const category = item.category || 'Other'
-    if (!acc[category]) acc[category] = []
-    acc[category].push(item)
-    return acc
-  }, {} as Record<string, MenuItem[]>)
+  // Group menu items by the 4 main categories for the currently selected date
+  const filteredMenuItems = getMenuItemsForDate(selectedDate)
+  const groupedByCategory = {
+    rice: filteredMenuItems.filter(item => item.category === 'rice'),
+    noodles: filteredMenuItems.filter(item => item.category === 'noodles'),
+    dumplings: filteredMenuItems.filter(item => item.category === 'dumplings'),
+    snacks: filteredMenuItems.filter(item => item.category === 'snacks'),
+  }
 
   if (loading) {
     return (
@@ -198,14 +233,19 @@ export default function OrderPage() {
       <Tabs value={selectedDate} onValueChange={setSelectedDate} className="w-full">
         <TabsList className="grid w-full grid-cols-5 bg-gray-100 border border-gray-200">
           {WEEKDAYS.map((day) => {
-            const hasItems = selectedChildId && getCartItems(selectedChildId, day).length > 0
+            const fullDate = getFullDateString(day)
+            const hasItems = selectedChildId && getCartItems(selectedChildId, fullDate).length > 0
+            const dateObj = getDateForWeekday(day)
             return (
               <TabsTrigger 
                 key={day} 
                 value={day}
                 className="relative data-[state=active]:bg-orange-400 data-[state=active]:text-white font-medium"
               >
-                {WEEKDAY_LABELS[day]}
+                <div className="flex flex-col items-center">
+                  <span>{WEEKDAY_LABELS[day]}</span>
+                  <span className="text-[10px] opacity-70">{format(dateObj, 'M/d')}</span>
+                </div>
                 {hasItems && (
                   <span className="absolute -top-0.5 -right-0.5 h-2 w-2 bg-green-500 rounded-full border border-white"></span>
                 )}
@@ -215,22 +255,60 @@ export default function OrderPage() {
         </TabsList>
 
         {WEEKDAYS.map((day) => (
-          <TabsContent key={day} value={day} className="mt-4 space-y-6">
-            {/* Menu Categories */}
-            {Object.entries(groupedMenuItems).map(([category, items]) => (
-              <div key={category} className="space-y-3">
-                <h3 className="text-lg font-semibold text-gray-800">{category}</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {items.map((item) => (
-                    <MenuItemCard 
-                      key={item.id} 
-                      item={item} 
-                      onAdd={handleAddToCart}
+          <TabsContent key={day} value={day} className="mt-4 space-y-8">
+            {/* Menu Categories - 4 Main Groups */}
+            {MENU_CATEGORIES.map(category => {
+              const items = groupedByCategory[category.id as keyof typeof groupedByCategory]
+              if (!items || items.length === 0) return null
+              
+              const isExpanded = expandedCategories.has(category.id)
+              
+              return (
+                <div key={category.id} className="space-y-4">
+                  {/* Category Header - Clickable */}
+                  <button
+                    onClick={() => {
+                      const newExpanded = new Set(expandedCategories)
+                      if (isExpanded) {
+                        newExpanded.delete(category.id)
+                      } else {
+                        newExpanded.add(category.id)
+                      }
+                      setExpandedCategories(newExpanded)
+                    }}
+                    className="w-full flex items-center gap-3 pb-2 border-b-2 border-orange-100 hover:border-orange-300 transition-colors"
+                  >
+                    <span className="text-4xl">{category.emoji}</span>
+                    <div className="flex-1 text-left">
+                      <h2 className="text-xl font-bold text-gray-900">
+                        {category.nameCn}
+                      </h2>
+                      <p className="text-sm text-gray-500">
+                        {category.nameEn} · {items.length} 道菜品
+                      </p>
+                    </div>
+                    <ChevronDown 
+                      className={`h-6 w-6 text-gray-500 transition-transform duration-200 ${
+                        isExpanded ? 'rotate-180' : ''
+                      }`}
                     />
-                  ))}
+                  </button>
+                  
+                  {/* Menu Items Grid - Collapsible */}
+                  {isExpanded && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                      {items.map((item) => (
+                        <MenuItemCard 
+                          key={item.id} 
+                          item={item} 
+                          onAdd={handleAddToCart}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </TabsContent>
         ))}
       </Tabs>
@@ -241,7 +319,7 @@ export default function OrderPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-gray-600 text-sm">
-                {children.find(c => c.id === selectedChildId)?.name} - {WEEKDAY_LABELS[selectedDate]}
+                {children.find(c => c.id === selectedChildId)?.name} - {WEEKDAY_LABELS[selectedDate]} ({format(getDateForWeekday(selectedDate), 'M/d')})
               </p>
               <p className="text-gray-900 font-semibold text-lg">
                 {currentCartItems.length} 项商品 · <span className="text-orange-500">${currentCartTotal.toFixed(2)}</span>
@@ -253,7 +331,7 @@ export default function OrderPage() {
                 className="border-gray-300 text-gray-700 hover:bg-gray-50"
                 onClick={() => {
                   if (selectedChildId) {
-                    currentCartItems.forEach(item => removeItem(selectedChildId, selectedDate, item.menu_item.id, item.portion_type))
+                    currentCartItems.forEach(item => removeItem(selectedChildId, fullDateString, item.menu_item.id, item.portion_type))
                   }
                 }}
               >
@@ -286,9 +364,9 @@ export default function OrderPage() {
                     e.stopPropagation()
                     if (selectedChildId) {
                       if (cartItem.quantity > 1) {
-                        updateQuantity(selectedChildId, selectedDate, cartItem.menu_item.id, cartItem.quantity - 1, cartItem.portion_type)
+                        updateQuantity(selectedChildId, fullDateString, cartItem.menu_item.id, cartItem.quantity - 1, cartItem.portion_type)
                       } else {
-                        removeItem(selectedChildId, selectedDate, cartItem.menu_item.id, cartItem.portion_type)
+                        removeItem(selectedChildId, fullDateString, cartItem.menu_item.id, cartItem.portion_type)
                       }
                     }
                   }}
@@ -344,93 +422,5 @@ export default function OrderPage() {
         </DialogContent>
       </Dialog>
     </div>
-  )
-}
-
-// Menu Item Card Component
-function MenuItemCard({ 
-  item, 
-  onAdd 
-}: { 
-  item: MenuItem
-  onAdd: (item: MenuItem, portionType: 'Full Order' | 'Half Order') => void 
-}) {
-  const [selectedPortion, setSelectedPortion] = useState<'Full Order' | 'Half Order'>('Full Order')
-  const isDumplings = item.name.toLowerCase().includes('dumpling')
-  
-  const getPrice = () => {
-    if (isDumplings) {
-      return selectedPortion === 'Full Order' ? 13 : 11
-    }
-    return item.base_price
-  }
-
-  const getPortionLabel = () => {
-    if (isDumplings) {
-      return selectedPortion === 'Full Order' ? '8 pieces' : '6 pieces'
-    }
-    return selectedPortion
-  }
-
-  return (
-    <Card className="bg-white border-gray-200 hover:border-orange-300 transition-colors shadow-sm">
-      <CardHeader className="pb-2">
-        <div className="flex justify-between items-start">
-          <div>
-            <CardTitle className="text-gray-900 text-base">{item.name}</CardTitle>
-            {item.description && (
-              <CardDescription className="text-gray-600 text-sm mt-1">
-                {item.description}
-              </CardDescription>
-            )}
-          </div>
-          {item.has_tofu_option && (
-            <span className="text-xs bg-green-50 text-green-600 px-2 py-1 rounded border border-green-200">
-              素食可选
-            </span>
-          )}
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        {/* Portion Selector for Dumplings */}
-        {isDumplings && !item.is_full_order_only && (
-          <Select 
-            value={selectedPortion} 
-            onValueChange={(v) => setSelectedPortion(v as 'Full Order' | 'Half Order')}
-          >
-            <SelectTrigger className="bg-gray-50 border-gray-200 text-gray-900">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="bg-white border-gray-200">
-              <SelectItem value="Full Order" className="text-gray-900">
-                Full Order (8 pieces) - $13.00
-              </SelectItem>
-              <SelectItem value="Half Order" className="text-gray-900">
-                Half Order (6 pieces) - $11.00
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        )}
-
-        <div className="flex items-center justify-between">
-          <div>
-            <span className="text-orange-500 font-bold text-lg">${getPrice().toFixed(2)}</span>
-            {isDumplings && (
-              <span className="text-gray-500 text-sm ml-2">({getPortionLabel()})</span>
-            )}
-            {item.is_full_order_only && (
-              <span className="text-gray-500 text-xs block">Full Order Only</span>
-            )}
-          </div>
-          <Button
-            size="sm"
-            onClick={() => onAdd(item, isDumplings ? selectedPortion : 'Full Order')}
-            className="bg-orange-500 hover:bg-orange-600 text-white font-medium"
-          >
-            + 添加
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
   )
 }

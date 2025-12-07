@@ -4,7 +4,7 @@ import { HomeCarousel } from '@/components/dashboard/HomeCarousel'
 
 export default function DashboardPage() {
   return (
-    <div className="h-[calc(100vh-120px)] overflow-hidden flex flex-col">
+    <div className="h-[calc(100vh-160px)] overflow-hidden flex flex-col">
       {/* Hero Section - Empty placeholder for future content */}
       <div className="flex-1" />
 

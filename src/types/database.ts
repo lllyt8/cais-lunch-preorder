@@ -24,6 +24,15 @@ export interface MenuItem {
   category?: string;
   is_full_order_only: boolean;
   has_tofu_option: boolean;
+  available_date?: string; // ISO date string (YYYY-MM-DD) for when this menu item is available
+
+  // Image and dietary information
+  image_url?: string;
+  is_vegetarian?: boolean;
+  contains_soy?: boolean;
+  contains_gluten?: boolean;
+  contains_fish?: boolean;
+  contains_eggs?: boolean;
 }
 
 export interface Order {

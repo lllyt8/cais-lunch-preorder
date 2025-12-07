@@ -15,12 +15,13 @@ import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 
 export function Header() {
-  const { currentWeekIndex, setCurrentWeekIndex, getWeekOptions, getCurrentWeek } = useWeekSelector()
+  const { currentWeekIndex, setCurrentWeekIndex, getWeekOptions } = useWeekSelector()
   const { getTotalItemCount } = useCart()
   const [mounted, setMounted] = useState(false)
   
+  // These will recompute whenever currentWeekIndex changes
   const weekOptions = getWeekOptions()
-  const currentWeek = getCurrentWeek()
+  const currentWeek = weekOptions[currentWeekIndex] || weekOptions[0]
   const itemCount = getTotalItemCount()
 
   useEffect(() => {
