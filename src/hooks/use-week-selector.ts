@@ -76,7 +76,7 @@ export const useWeekSelector = create<WeekSelectorState>()(
       },
     }),
     {
-      name: "week-selector-storage",
+      name: "week-selector-storage-v2",
     }
   )
 );

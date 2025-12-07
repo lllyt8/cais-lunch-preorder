@@ -68,8 +68,8 @@ export default function ProfilePage() {
         animate={{ opacity: 1, y: 0 }}
         className="flex flex-col items-center text-center"
       >
-        <Avatar className="h-24 w-24 mb-4 border-4 border-orange-200">
-          <AvatarFallback className="bg-orange-100 text-orange-600 text-3xl font-bold">
+        <Avatar className="h-24 w-24 mb-4 ring-4 ring-orange-100 shadow-md">
+          <AvatarFallback className="bg-gradient-to-br from-orange-400 to-orange-500 text-white text-3xl font-bold">
             {profile?.email?.charAt(0).toUpperCase() || 'U'}
           </AvatarFallback>
         </Avatar>
@@ -85,16 +85,16 @@ export default function ProfilePage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
       >
-        <Card className="bg-orange-500 border-0 shadow-lg">
+        <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200 shadow-md">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-white/80 text-sm">Account Balance</p>
-                <p className="text-white text-3xl font-bold">
+                <p className="text-orange-700 text-sm font-medium">Account Balance</p>
+                <p className="text-orange-600 text-3xl font-bold">
                   ${(profile?.account_balance || 0).toFixed(2)}
                 </p>
               </div>
-              <CreditCard className="h-12 w-12 text-white/30" />
+              <CreditCard className="h-12 w-12 text-orange-300" />
             </div>
             <div className="mt-4">
               <BalanceTopup currentBalance={profile?.account_balance || 0} />

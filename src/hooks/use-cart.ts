@@ -19,12 +19,18 @@ interface CartState {
     portionType: "Full Order" | "Half Order",
     price: number
   ) => void;
-  removeItem: (childId: string, date: string, menuItemId: string) => void;
+  removeItem: (
+    childId: string,
+    date: string,
+    menuItemId: string,
+    portionType?: string
+  ) => void;
   updateQuantity: (
     childId: string,
     date: string,
     menuItemId: string,
-    quantity: number
+    quantity: number,
+    portionType?: string
   ) => void;
   clearCart: (childId: string, date: string) => void;
   clearAllCarts: () => void;
@@ -79,20 +85,25 @@ export const useCart = create<CartState>()(
         }
       },
 
-      removeItem: (childId, date, menuItemId) => {
+      removeItem: (childId, date, menuItemId, portionType) => {
         const key = `${childId}-${date}`;
         const currentItems = get().items[key] || [];
         set({
           items: {
             ...get().items,
-            [key]: currentItems.filter(
-              (item) => item.menu_item.id !== menuItemId
+            [key]: currentItems.filter((item) =>
+              portionType
+                ? !(
+                    item.menu_item.id === menuItemId &&
+                    item.portion_type === portionType
+                  )
+                : item.menu_item.id !== menuItemId
             ),
           },
         });
       },
 
-      updateQuantity: (childId, date, menuItemId, quantity) => {
+      updateQuantity: (childId, date, menuItemId, quantity, portionType) => {
         const key = `${childId}-${date}`;
         const currentItems = get().items[key] || [];
 
@@ -100,8 +111,13 @@ export const useCart = create<CartState>()(
           set({
             items: {
               ...get().items,
-              [key]: currentItems.filter(
-                (item) => item.menu_item.id !== menuItemId
+              [key]: currentItems.filter((item) =>
+                portionType
+                  ? !(
+                      item.menu_item.id === menuItemId &&
+                      item.portion_type === portionType
+                    )
+                  : item.menu_item.id !== menuItemId
               ),
             },
           });
@@ -110,7 +126,14 @@ export const useCart = create<CartState>()(
             items: {
               ...get().items,
               [key]: currentItems.map((item) =>
-                item.menu_item.id === menuItemId ? { ...item, quantity } : item
+                (
+                  portionType
+                    ? item.menu_item.id === menuItemId &&
+                      item.portion_type === portionType
+                    : item.menu_item.id === menuItemId
+                )
+                  ? { ...item, quantity }
+                  : item
               ),
             },
           });

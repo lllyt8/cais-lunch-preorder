@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { User, ShoppingBag, ChevronDown, Calendar } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -16,10 +17,17 @@ import { motion, AnimatePresence } from 'framer-motion'
 export function Header() {
   const { currentWeekIndex, setCurrentWeekIndex, getWeekOptions, getCurrentWeek } = useWeekSelector()
   const { getTotalItemCount } = useCart()
+  const [mounted, setMounted] = useState(false)
   
   const weekOptions = getWeekOptions()
   const currentWeek = getCurrentWeek()
   const itemCount = getTotalItemCount()
+
+  useEffect(() => {
+    // Prevent hydration mismatch by only rendering cart badge on client
+    // eslint-disable-next-line
+    setMounted(true)
+  }, [])
 
   return (
     <header className="sticky top-0 z-50 bg-[#ececec]">
@@ -39,7 +47,9 @@ export function Header() {
               className="flex items-center gap-2 text-gray-800 hover:bg-gray-100 px-4 py-2 rounded-full"
             >
               <Calendar className="h-4 w-4 text-orange-500" />
-              <span className="font-medium">{currentWeek.label}</span>
+              <span className="font-medium">
+                {mounted ? currentWeek.label : 'Loading...'}
+              </span>
               <ChevronDown className="h-4 w-4 text-gray-400" />
             </Button>
           </DropdownMenuTrigger>
@@ -68,18 +78,20 @@ export function Header() {
         <Link href="/dashboard/cart">
           <Button variant="ghost" size="icon" className="relative rounded-full bg-[#ececec] hover:bg-gray-200">
             <ShoppingBag className="h-5 w-5 text-gray-600" />
-            <AnimatePresence>
-              {itemCount > 0 && (
-                <motion.span
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  exit={{ scale: 0 }}
-                  className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-orange-500 text-xs font-bold text-white flex items-center justify-center"
-                >
-                  {itemCount > 9 ? '9+' : itemCount}
-                </motion.span>
-              )}
-            </AnimatePresence>
+            {mounted && (
+              <AnimatePresence>
+                {itemCount > 0 && (
+                  <motion.span
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    exit={{ scale: 0 }}
+                    className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-orange-500 text-xs font-bold text-white flex items-center justify-center border-2 border-white"
+                  >
+                    {itemCount > 9 ? '9+' : itemCount}
+                  </motion.span>
+                )}
+              </AnimatePresence>
+            )}
           </Button>
         </Link>
       </div>

@@ -55,15 +55,15 @@ export function BalanceTopup({ currentBalance = 0 }: { currentBalance?: number }
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="outline" className="border-slate-600 text-slate-200 hover:bg-slate-700">
+        <Button className="bg-white hover:bg-gray-50 text-orange-600 border-2 border-orange-300 shadow-sm font-semibold">
           💳 充值余额
         </Button>
       </DialogTrigger>
-      <DialogContent className="bg-slate-800 border-slate-700 max-w-md">
+      <DialogContent className="bg-white border-gray-200 max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-slate-100">账户充值</DialogTitle>
-          <DialogDescription className="text-slate-400">
-            当前余额: <span className="text-amber-400 font-semibold">{formatCurrency(currentBalance)}</span>
+          <DialogTitle className="text-gray-900">账户充值</DialogTitle>
+          <DialogDescription className="text-gray-600">
+            当前余额: <span className="text-orange-600 font-semibold">{formatCurrency(currentBalance)}</span>
           </DialogDescription>
         </DialogHeader>
 
@@ -76,27 +76,27 @@ export function BalanceTopup({ currentBalance = 0 }: { currentBalance?: number }
               transition={{ delay: index * 0.1 }}
             >
               <Card 
-                className={`cursor-pointer transition-all hover:border-amber-500/50 ${
+                className={`cursor-pointer transition-all hover:border-orange-400 hover:shadow-md ${
                   selectedAmount === option.amount 
-                    ? 'border-amber-500 bg-amber-500/10' 
-                    : 'bg-slate-700/50 border-slate-600'
+                    ? 'border-orange-500 bg-orange-50 shadow-md' 
+                    : 'bg-white border-gray-200'
                 }`}
                 onClick={() => !loading && handleTopup(option.amount)}
               >
                 <CardContent className="flex items-center justify-between p-4">
                   <div>
-                    <p className="text-xl font-bold text-slate-100">
+                    <p className="text-xl font-bold text-gray-900">
                       {formatCurrency(option.amount)}
                     </p>
                     {option.bonus > 0 && (
-                      <p className="text-sm text-green-400">
+                      <p className="text-sm text-green-600">
                         +{formatCurrency(option.bonus)} 赠送
                       </p>
                     )}
                   </div>
                   <Button
                     disabled={loading}
-                    className="bg-amber-500 hover:bg-amber-600 text-white"
+                    className="bg-orange-500 hover:bg-orange-600 text-white"
                   >
                     {loading && selectedAmount === option.amount ? (
                       <span className="animate-spin">⏳</span>
@@ -110,7 +110,7 @@ export function BalanceTopup({ currentBalance = 0 }: { currentBalance?: number }
           ))}
         </div>
 
-        <p className="text-xs text-slate-500 text-center">
+        <p className="text-xs text-gray-500 text-center">
           支持 Apple Pay / Google Pay / 信用卡
         </p>
       </DialogContent>

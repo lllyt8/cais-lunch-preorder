@@ -140,61 +140,61 @@ export default function ChildrenPage() {
   }
 
   return (
-    <div className="space-y-6 md:ml-64">
+    <div className="space-y-6 p-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-100">孩子管理</h1>
-          <p className="text-slate-400">添加和管理您的孩子信息</p>
+          <h1 className="text-2xl font-bold text-gray-900">孩子管理</h1>
+          <p className="text-gray-600">添加和管理您的孩子信息</p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button 
               onClick={openAddDialog}
-              className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
+              className="bg-orange-500 hover:bg-orange-600 text-white shadow-md"
             >
               + 添加孩子
             </Button>
           </DialogTrigger>
-          <DialogContent className="bg-slate-800 border-slate-700">
+          <DialogContent className="bg-white border-gray-200">
             <form onSubmit={handleSubmit}>
               <DialogHeader>
-                <DialogTitle className="text-slate-100">
+                <DialogTitle className="text-gray-900">
                   {editingChild ? '编辑孩子信息' : '添加新孩子'}
                 </DialogTitle>
-                <DialogDescription className="text-slate-400">
+                <DialogDescription className="text-gray-600">
                   {editingChild ? '更新孩子的基本信息' : '填写孩子的基本信息以开始订餐'}
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name" className="text-slate-200">姓名 *</Label>
+                  <Label htmlFor="name" className="text-gray-700">姓名 *</Label>
                   <Input
                     id="name"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     placeholder="孩子的姓名"
                     required
-                    className="bg-slate-700/50 border-slate-600 text-slate-100"
+                    className="bg-white border-gray-200 text-gray-900"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="class_info" className="text-slate-200">班级</Label>
+                  <Label htmlFor="class_info" className="text-gray-700">班级</Label>
                   <Input
                     id="class_info"
                     value={formData.class_info}
                     onChange={(e) => setFormData({ ...formData, class_info: e.target.value })}
                     placeholder="例如: Grade 3, Class A"
-                    className="bg-slate-700/50 border-slate-600 text-slate-100"
+                    className="bg-white border-gray-200 text-gray-900"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="birthday" className="text-slate-200">生日</Label>
+                  <Label htmlFor="birthday" className="text-gray-700">生日</Label>
                   <Input
                     id="birthday"
                     type="date"
                     value={formData.birthday}
                     onChange={(e) => setFormData({ ...formData, birthday: e.target.value })}
-                    className="bg-slate-700/50 border-slate-600 text-slate-100"
+                    className="bg-white border-gray-200 text-gray-900"
                   />
                 </div>
               </div>
@@ -203,13 +203,13 @@ export default function ChildrenPage() {
                   type="button" 
                   variant="outline" 
                   onClick={() => setDialogOpen(false)}
-                  className="border-slate-600 text-slate-200"
+                  className="border-gray-300 text-gray-700 hover:bg-gray-50"
                 >
                   取消
                 </Button>
                 <Button 
                   type="submit"
-                  className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
+                  className="bg-orange-500 hover:bg-orange-600 text-white"
                 >
                   {editingChild ? '保存' : '添加'}
                 </Button>
@@ -221,17 +221,17 @@ export default function ChildrenPage() {
 
       {loading ? (
         <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
         </div>
       ) : children.length === 0 ? (
-        <Card className="bg-slate-800/50 border-slate-700">
+        <Card className="bg-white border-gray-200 shadow-sm">
           <CardContent className="flex flex-col items-center justify-center py-12">
             <span className="text-6xl mb-4">👶</span>
-            <h3 className="text-xl font-semibold text-slate-100 mb-2">还没有添加孩子</h3>
-            <p className="text-slate-400 mb-4">添加您的孩子以开始订餐</p>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">还没有添加孩子</h3>
+            <p className="text-gray-600 mb-4">添加您的孩子以开始订餐</p>
             <Button 
               onClick={openAddDialog}
-              className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
+              className="bg-orange-500 hover:bg-orange-600 text-white"
             >
               + 添加第一个孩子
             </Button>
@@ -242,7 +242,7 @@ export default function ChildrenPage() {
           {/* Mobile Card View */}
           <div className="grid grid-cols-1 gap-4 md:hidden">
             {children.map((child) => (
-              <Card key={child.id} className="bg-slate-800/50 border-slate-700">
+              <Card key={child.id} className="bg-white border-gray-200 shadow-sm">
                 <CardContent className="flex items-center gap-4 p-4">
                   <Avatar className="h-14 w-14">
                     <AvatarFallback className={`${getAvatarColor(child.name)} text-white text-lg`}>
@@ -250,12 +250,12 @@ export default function ChildrenPage() {
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1">
-                    <h3 className="font-semibold text-slate-100">{child.name}</h3>
+                    <h3 className="font-semibold text-gray-900">{child.name}</h3>
                     {child.class_info && (
-                      <p className="text-sm text-slate-400">{child.class_info}</p>
+                      <p className="text-sm text-gray-600">{child.class_info}</p>
                     )}
                     {child.birthday && (
-                      <p className="text-sm text-slate-500">🎂 {child.birthday}</p>
+                      <p className="text-sm text-gray-500">🎂 {child.birthday}</p>
                     )}
                   </div>
                   <div className="flex gap-2">
@@ -263,7 +263,7 @@ export default function ChildrenPage() {
                       size="sm" 
                       variant="ghost" 
                       onClick={() => handleEdit(child)}
-                      className="text-slate-400 hover:text-slate-100"
+                      className="text-gray-600 hover:text-gray-900 hover:bg-gray-100"
                     >
                       编辑
                     </Button>
@@ -271,7 +271,7 @@ export default function ChildrenPage() {
                       size="sm" 
                       variant="ghost" 
                       onClick={() => handleDelete(child.id)}
-                      className="text-red-400 hover:text-red-300"
+                      className="text-red-500 hover:text-red-600 hover:bg-red-50"
                     >
                       删除
                     </Button>
@@ -282,19 +282,19 @@ export default function ChildrenPage() {
           </div>
 
           {/* Desktop Table View */}
-          <Card className="hidden md:block bg-slate-800/50 border-slate-700">
+          <Card className="hidden md:block bg-white border-gray-200 shadow-sm">
             <Table>
               <TableHeader>
-                <TableRow className="border-slate-700 hover:bg-slate-700/50">
-                  <TableHead className="text-slate-300">孩子</TableHead>
-                  <TableHead className="text-slate-300">班级</TableHead>
-                  <TableHead className="text-slate-300">生日</TableHead>
-                  <TableHead className="text-slate-300 text-right">操作</TableHead>
+                <TableRow className="border-gray-200 hover:bg-gray-50">
+                  <TableHead className="text-gray-700 font-semibold">孩子</TableHead>
+                  <TableHead className="text-gray-700 font-semibold">班级</TableHead>
+                  <TableHead className="text-gray-700 font-semibold">生日</TableHead>
+                  <TableHead className="text-gray-700 font-semibold text-right">操作</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {children.map((child) => (
-                  <TableRow key={child.id} className="border-slate-700 hover:bg-slate-700/50">
+                  <TableRow key={child.id} className="border-gray-200 hover:bg-gray-50">
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-3">
                         <Avatar>
@@ -302,17 +302,17 @@ export default function ChildrenPage() {
                             {getInitials(child.name)}
                           </AvatarFallback>
                         </Avatar>
-                        <span className="text-slate-100">{child.name}</span>
+                        <span className="text-gray-900">{child.name}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="text-slate-300">{child.class_info || '-'}</TableCell>
-                    <TableCell className="text-slate-300">{child.birthday || '-'}</TableCell>
+                    <TableCell className="text-gray-700">{child.class_info || '-'}</TableCell>
+                    <TableCell className="text-gray-700">{child.birthday || '-'}</TableCell>
                     <TableCell className="text-right">
                       <Button 
                         size="sm" 
                         variant="ghost" 
                         onClick={() => handleEdit(child)}
-                        className="text-slate-400 hover:text-slate-100"
+                        className="text-gray-600 hover:text-gray-900 hover:bg-gray-100"
                       >
                         编辑
                       </Button>
@@ -320,7 +320,7 @@ export default function ChildrenPage() {
                         size="sm" 
                         variant="ghost" 
                         onClick={() => handleDelete(child.id)}
-                        className="text-red-400 hover:text-red-300"
+                        className="text-red-500 hover:text-red-600 hover:bg-red-50"
                       >
                         删除
                       </Button>
