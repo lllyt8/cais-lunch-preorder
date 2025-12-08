@@ -26,7 +26,56 @@ export async function POST(request: Request) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
 
-        if (session.metadata?.type === "balance_topup") {
+        // 处理订单支付 - 支付成功后创建订单
+        if (session.metadata?.orders_data) {
+          const userId = session.metadata.user_id;
+          const ordersData = JSON.parse(session.metadata.orders_data);
+
+          // 为每个订单创建数据库记录
+          for (const orderData of ordersData) {
+            // 创建订单
+            const { data: order, error: orderError } = await supabase
+              .from("orders")
+              .insert({
+                parent_id: userId,
+                child_id: orderData.childId,
+                order_date: orderData.date,
+                total_amount: orderData.total,
+                status: "paid", // 直接标记为已支付
+                fulfillment_status: "pending_delivery",
+                stripe_payment_intent_id: session.payment_intent as string,
+                special_requests: orderData.specialRequests,
+              })
+              .select()
+              .single();
+
+            if (orderError) {
+              console.error("Error creating order:", orderError);
+              continue;
+            }
+
+            // 创建订单详情
+            const orderDetails = orderData.items.map((item: any) => ({
+              order_id: order.id,
+              menu_item_id: item.menu_item_id,
+              quantity: item.quantity,
+              unit_price: item.unit_price,
+              portion: item.portion,
+            }));
+
+            const { error: detailsError } = await supabase
+              .from("order_details")
+              .insert(orderDetails);
+
+            if (detailsError) {
+              console.error("Error creating order details:", detailsError);
+            } else {
+              console.log(`Order ${order.id} created and marked as paid`);
+            }
+          }
+        }
+        // 处理余额充值
+        else if (session.metadata?.type === "balance_topup") {
           const userId = session.metadata.user_id;
           const amount = parseFloat(session.metadata.amount);
 

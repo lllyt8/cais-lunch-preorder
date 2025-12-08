@@ -4,12 +4,17 @@ import { useCart } from '@/hooks/use-cart'
 import { useChildren } from '@/hooks/use-children'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Textarea } from '@/components/ui/textarea'
+import { Label } from '@/components/ui/label'
 import { Minus, Plus, Trash2, ShoppingBag, ArrowLeft, ChevronDown, ChevronUp, Calendar, User } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { formatCurrency } from '@/lib/stripe'
+import { calculatePriceBreakdown } from '@/lib/pricing'
 import { format, parseISO, startOfWeek, endOfWeek } from 'date-fns'
 import { useState, useEffect, useMemo, useRef } from 'react'
+import { toast } from 'sonner'
 
 const WEEKDAY_LABELS: Record<string, string> = {
   'Mon': '周一',
@@ -43,12 +48,15 @@ const formatDateDisplay = (dateStr: string): string => {
 }
 
 export default function CartPage() {
-  const { items, updateQuantity, removeItem, getTotalItemCount } = useCart()
+  const { items, updateQuantity, removeItem, getTotalItemCount, clearAllCarts } = useCart()
   const { data: children, isLoading: childrenLoading } = useChildren()
   const router = useRouter()
   const [expandedWeeks, setExpandedWeeks] = useState<Set<string>>(new Set())
   const [expandedChildren, setExpandedChildren] = useState<Set<string>>(new Set())
   const hasInitialized = useRef(false)
+  const [showCheckoutDialog, setShowCheckoutDialog] = useState(false)
+  const [specialRequests, setSpecialRequests] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const totalItemCount = getTotalItemCount()
 
@@ -164,12 +172,27 @@ export default function CartPage() {
     }
   }, [weekGroups])
   
-  // Calculate grand total
-  const grandTotal = useMemo(() => {
-    return Object.values(items).reduce((total, cartItems) => {
-      return total + cartItems.reduce((sum, item) => sum + item.unit_price * item.quantity, 0)
-    }, 0)
+  // 计算小计
+  const subtotal = useMemo(() => {
+    return Object.values(items).flat().reduce(
+      (sum, item) => sum + item.unit_price * item.quantity,
+      0
+    )
   }, [items])
+
+  // 计算税费明细
+  const priceBreakdown = useMemo(() => {
+    return calculatePriceBreakdown(subtotal, {
+      salesTaxRate: 0.08625, // 8.625% 旧金山销售税
+      serviceFeeRate: 0.00,
+      stripeFeeRate: 0.029,
+      stripeFeeFixed: 0.30,
+      includeFeesInPrice: false, // 不转嫁Stripe费用
+    })
+  }, [subtotal])
+
+  // 总价 = 小计 + 税费
+  const totalAmount = priceBreakdown.total
   
   // Show loading state while children data is loading
   if (childrenLoading) {
@@ -199,6 +222,96 @@ export default function CartPage() {
       newExpanded.add(key)
     }
     setExpandedChildren(newExpanded)
+  }
+
+  // 处理订单提交
+  const handleCheckout = async () => {
+    setIsSubmitting(true)
+    
+    try {
+      // 准备订单数据（用于Stripe metadata，不创建数据库记录）
+      const ordersData = []
+      
+      for (const [key, cartItems] of Object.entries(items)) {
+        if (cartItems.length === 0) continue
+        
+        // 解析 key: ${childId}-${date}
+        const lastHyphenIndex = key.lastIndexOf('-')
+        const possibleDateStart = key.length - 10
+        
+        let childId: string
+        let dateStr: string
+        
+        if (key[possibleDateStart - 1] === '-' && key.substring(possibleDateStart).match(/^\d{4}-\d{2}-\d{2}$/)) {
+          dateStr = key.substring(possibleDateStart)
+          childId = key.substring(0, possibleDateStart - 1)
+        } else {
+          childId = key.substring(0, lastHyphenIndex)
+          dateStr = key.substring(lastHyphenIndex + 1)
+        }
+        
+        const itemsSubtotal = cartItems.reduce((sum, item) => sum + item.unit_price * item.quantity, 0)
+        
+        // 计算含税总价
+        const orderBreakdown = calculatePriceBreakdown(itemsSubtotal, {
+          salesTaxRate: 0.08625, // 旧金山税率
+          serviceFeeRate: 0.00,
+          stripeFeeRate: 0.029,
+          stripeFeeFixed: 0.30,
+          includeFeesInPrice: false,
+        })
+        
+        // 只保存必要的数据，减少metadata大小
+        ordersData.push({
+          childId,
+          date: dateStr,
+          items: cartItems.map(item => ({
+            menu_item_id: item.menu_item.id,
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            portion: item.portion_type || 'Full Order'
+          })),
+          total: orderBreakdown.total,
+          specialRequests: specialRequests.trim() || null
+        })
+      }
+      
+      // 直接创建 Stripe Checkout Session（不创建订单）
+      const checkoutResponse = await fetch('/api/stripe/create-checkout-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ordersData, // 传递订单数据用于metadata
+          successUrl: `${window.location.origin}/dashboard/orders?payment_success=true`,
+          cancelUrl: `${window.location.origin}/dashboard/cart`,
+        })
+      })
+      
+      const checkoutData = await checkoutResponse.json()
+      
+      if (!checkoutResponse.ok) {
+        throw new Error(checkoutData.error || 'Failed to create checkout session')
+      }
+      
+      // 关闭对话框
+      setShowCheckoutDialog(false)
+      
+      // 跳转到 Stripe Checkout
+      // 注意：不在这里清空购物车，等支付成功后再清空
+      if (checkoutData.url) {
+        // 显示跳转提示
+        toast.success('Redirecting to secure payment...', { duration: 2000 })
+        window.location.href = checkoutData.url
+      }
+      
+    } catch (error: unknown) {
+      console.error('Checkout error:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to submit order')
+      setIsSubmitting(false)
+    }
+    // 注意：跳转时不要设置 setIsSubmitting(false)，保持loading状态直到页面跳转
   }
 
   if (totalItemCount === 0) {
@@ -372,16 +485,114 @@ export default function CartPage() {
 
       {/* Checkout Footer */}
       <div className="fixed bottom-16 left-0 right-0 bg-gray-900 border-t border-gray-700 p-4">
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-gray-300">Total</span>
-          <span className="text-2xl font-bold text-white">
-            {formatCurrency(grandTotal)}
-          </span>
+        {/* Price Breakdown */}
+        <div className="space-y-2 mb-4">
+          <div className="flex justify-between text-gray-300 text-sm">
+            <span>Subtotal</span>
+            <span>{formatCurrency(priceBreakdown.subtotal)}</span>
+          </div>
+          <div className="flex justify-between text-gray-300 text-sm">
+            <span>Sales Tax (8.625%)</span>
+            <span>{formatCurrency(priceBreakdown.salesTax)}</span>
+          </div>
+          <div className="flex items-center justify-between pt-2 border-t border-gray-700">
+            <span className="text-gray-300 font-medium">Total</span>
+            <span className="text-2xl font-bold text-white">
+              {formatCurrency(totalAmount)}
+            </span>
+          </div>
         </div>
-        <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white h-12 text-lg font-semibold shadow-md">
+        <Button 
+          onClick={() => setShowCheckoutDialog(true)}
+          className="w-full bg-orange-500 hover:bg-orange-600 text-white h-12 text-lg font-semibold shadow-md"
+        >
           Checkout
         </Button>
       </div>
+
+      {/* Checkout Confirmation Dialog */}
+      <Dialog open={showCheckoutDialog} onOpenChange={setShowCheckoutDialog}>
+        <DialogContent className="bg-white border-gray-200 max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-gray-900">Confirm Your Order</DialogTitle>
+            <DialogDescription className="text-gray-600">
+              Review your order details before submitting. You have {totalItemCount} items for {formatCurrency(totalAmount)}.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            {/* Order Summary */}
+            <div className="space-y-2">
+              <h3 className="font-semibold text-gray-900">Order Summary</h3>
+              <div className="bg-gray-50 rounded-lg p-3 space-y-1 text-sm">
+                {weekGroups.map((week) => (
+                  <div key={week.weekKey} className="flex justify-between">
+                    <span className="text-gray-700">{week.weekLabel}</span>
+                    <span className="font-medium text-gray-900">{formatCurrency(week.total)}</span>
+                  </div>
+                ))}
+                <div className="border-t border-gray-200 mt-2 pt-2 space-y-1">
+                  <div className="flex justify-between text-sm text-gray-600">
+                    <span>Subtotal</span>
+                    <span>{formatCurrency(priceBreakdown.subtotal)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm text-gray-600">
+                    <span>Sales Tax (8.625%)</span>
+                    <span>{formatCurrency(priceBreakdown.salesTax)}</span>
+                  </div>
+                  <div className="flex justify-between font-bold text-lg pt-1 border-t border-gray-200">
+                    <span className="text-gray-900">Total</span>
+                    <span className="text-orange-500">{formatCurrency(totalAmount)}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Special Requests */}
+            <div className="space-y-2">
+              <Label htmlFor="special-requests" className="text-gray-900">
+                Special Requests (Optional)
+              </Label>
+              <Textarea
+                id="special-requests"
+                value={specialRequests}
+                onChange={(e) => setSpecialRequests(e.target.value)}
+                placeholder="Any special instructions or dietary notes..."
+                rows={3}
+                className="bg-white border-gray-300 text-gray-900"
+              />
+            </div>
+
+            {/* Payment Note */}
+            <div className="bg-green-50 border border-green-200 rounded-lg p-3 space-y-1">
+              <p className="text-sm text-green-800">
+                💳 <strong>Secure Payment:</strong> You&apos;ll be redirected to Stripe to complete your payment securely.
+              </p>
+              <p className="text-xs text-green-700">
+                💡 If you cancel the payment, your cart will be preserved and you can try again later.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowCheckoutDialog(false)}
+              disabled={isSubmitting}
+              className="border-gray-300 text-gray-700"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCheckout}
+              disabled={isSubmitting}
+              className="bg-orange-500 hover:bg-orange-600 text-white"
+            >
+              {isSubmitting ? 'Submitting...' : 'Confirm Order'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

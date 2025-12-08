@@ -5,14 +5,21 @@ import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { 
   Download, 
   Calendar as CalendarIcon,
   Search,
   ArrowUpDown,
   User,
-  Package
+  Package,
+  CheckCircle,
+  Clock,
+  XCircle,
+  Truck
 } from 'lucide-react'
+import { toast } from 'sonner'
 import type { Order, OrderDetail, MenuItem, User as UserType } from '@/types/database'
 
 interface OrderWithDetails extends Order {
@@ -30,6 +37,11 @@ export default function AdminOrdersPage() {
   const [selectedDate, setSelectedDate] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+  const [statusDialogOpen, setStatusDialogOpen] = useState(false)
+  const [selectedOrder, setSelectedOrder] = useState<OrderWithDetails | null>(null)
+  const [newStatus, setNewStatus] = useState('')
+  const [newFulfillmentStatus, setNewFulfillmentStatus] = useState('')
+  const [updating, setUpdating] = useState(false)
   const supabase = createClient()
 
   const fetchOrders = async () => {
@@ -145,6 +157,97 @@ export default function AdminOrdersPage() {
 
   const getTotalItems = (order: OrderWithDetails) => {
     return order.order_details?.reduce((sum, detail) => sum + detail.quantity, 0) || 0
+  }
+
+  const handleOpenStatusDialog = (order: OrderWithDetails) => {
+    setSelectedOrder(order)
+    setNewStatus(order.status)
+    setNewFulfillmentStatus(order.fulfillment_status)
+    setStatusDialogOpen(true)
+  }
+
+  const handleUpdateStatus = async () => {
+    if (!selectedOrder) return
+
+    setUpdating(true)
+    try {
+      const response = await fetch('/api/admin/orders/update-status', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          orderId: selectedOrder.id,
+          status: newStatus,
+          fulfillmentStatus: newFulfillmentStatus
+        })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update status')
+      }
+
+      toast.success('Order status updated successfully!')
+      setStatusDialogOpen(false)
+      fetchOrders() // Refresh orders list
+
+    } catch (error) {
+      console.error('Error updating status:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to update status')
+    } finally {
+      setUpdating(false)
+    }
+  }
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'paid':
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
+            <CheckCircle className="h-3 w-3" />
+            Paid
+          </span>
+        )
+      case 'pending_payment':
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-1 bg-orange-100 text-orange-700 rounded-full text-xs font-medium">
+            <Clock className="h-3 w-3" />
+            Pending
+          </span>
+        )
+      case 'cancelled':
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-700 rounded-full text-xs font-medium">
+            <XCircle className="h-3 w-3" />
+            Cancelled
+          </span>
+        )
+      default:
+        return <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">{status}</span>
+    }
+  }
+
+  const getFulfillmentBadge = (status: string) => {
+    switch (status) {
+      case 'delivered':
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
+            <CheckCircle className="h-3 w-3" />
+            Delivered
+          </span>
+        )
+      case 'pending_delivery':
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+            <Truck className="h-3 w-3" />
+            Pending
+          </span>
+        )
+      default:
+        return <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">{status}</span>
+    }
   }
 
   useEffect(() => {
@@ -324,11 +427,32 @@ export default function AdminOrdersPage() {
                       ))}
                     </div>
 
-                    <div className="flex items-center gap-4 text-sm">
+                    <div className="flex items-center gap-4 text-sm flex-wrap">
                       <span className="text-gray-600">
                         总菜品数：<span className="font-semibold text-gray-900">{getTotalItems(order)}</span>
                       </span>
+                      <div className="flex items-center gap-2">
+                        {getStatusBadge(order.status)}
+                        {getFulfillmentBadge(order.fulfillment_status)}
+                      </div>
                     </div>
+                  </div>
+
+                  {/* Right: Actions */}
+                  <div className="flex flex-col gap-2">
+                    <div className="text-right">
+                      <p className="text-2xl font-bold text-orange-500">
+                        ${order.total_amount.toFixed(2)}
+                      </p>
+                    </div>
+                    <Button
+                      onClick={() => handleOpenStatusDialog(order)}
+                      size="sm"
+                      variant="outline"
+                      className="border-orange-500 text-orange-600 hover:bg-orange-50"
+                    >
+                      Update Status
+                    </Button>
                   </div>
                 </div>
               </CardContent>
@@ -336,6 +460,82 @@ export default function AdminOrdersPage() {
           ))}
         </div>
       )}
+
+      {/* Status Update Dialog */}
+      <Dialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
+        <DialogContent className="bg-white border-gray-200">
+          <DialogHeader>
+            <DialogTitle className="text-gray-900">Update Order Status</DialogTitle>
+            <DialogDescription className="text-gray-600">
+              Update the payment and fulfillment status for this order.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {/* Payment Status */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-900">Payment Status</label>
+              <Select value={newStatus} onValueChange={setNewStatus}>
+                <SelectTrigger className="bg-white border-gray-300">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-white border-gray-200">
+                  <SelectItem value="pending_payment">Pending Payment</SelectItem>
+                  <SelectItem value="paid">Paid</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Fulfillment Status */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-900">Fulfillment Status</label>
+              <Select value={newFulfillmentStatus} onValueChange={setNewFulfillmentStatus}>
+                <SelectTrigger className="bg-white border-gray-300">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-white border-gray-200">
+                  <SelectItem value="pending_delivery">Pending Delivery</SelectItem>
+                  <SelectItem value="delivered">Delivered</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Order Info */}
+            {selectedOrder && (
+              <div className="bg-gray-50 rounded-lg p-3 text-sm">
+                <p className="text-gray-700">
+                  <strong>Order Date:</strong> {formatDate(selectedOrder.order_date)}
+                </p>
+                <p className="text-gray-700">
+                  <strong>Customer:</strong> {selectedOrder.users?.email}
+                </p>
+                <p className="text-gray-700">
+                  <strong>Total:</strong> ${selectedOrder.total_amount.toFixed(2)}
+                </p>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setStatusDialogOpen(false)}
+              disabled={updating}
+              className="border-gray-300 text-gray-700"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleUpdateStatus}
+              disabled={updating}
+              className="bg-orange-500 hover:bg-orange-600 text-white"
+            >
+              {updating ? 'Updating...' : 'Update Status'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

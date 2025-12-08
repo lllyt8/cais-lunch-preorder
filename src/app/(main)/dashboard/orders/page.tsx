@@ -1,19 +1,58 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import type { Order, Child } from '@/types/database'
+import { Card } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { ChevronDown, ChevronUp, Calendar, User, ShoppingBag } from 'lucide-react'
+import { formatCurrency } from '@/lib/stripe'
+import { format, parseISO, startOfWeek, endOfWeek } from 'date-fns'
+import type { Order, Child, OrderDetail, MenuItem } from '@/types/database'
+import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
+import { toast } from 'sonner'
 
-interface OrderWithChild extends Order {
+interface OrderWithDetails extends Order {
   children: Child
+  order_details: Array<OrderDetail & { menu_items: MenuItem }>
+}
+
+interface DayOrder {
+  order: OrderWithDetails
+  items: Array<OrderDetail & { menu_items: MenuItem }>
+}
+
+interface ChildGroup {
+  childId: string
+  childName: string
+  days: DayOrder[]
+  total: number
+}
+
+interface WeekGroup {
+  weekKey: string
+  weekLabel: string
+  startDate: Date
+  endDate: Date
+  children: ChildGroup[]
+  total: number
 }
 
 export default function OrdersPage() {
-  const [orders, setOrders] = useState<OrderWithChild[]>([])
+  const [orders, setOrders] = useState<OrderWithDetails[]>([])
   const [loading, setLoading] = useState(true)
+  const [expandedWeeks, setExpandedWeeks] = useState<Set<string>>(new Set())
+  const [expandedChildren, setExpandedChildren] = useState<Set<string>>(new Set())
+  const searchParams = useSearchParams()
   const supabase = createClient()
+
+  // 从 localStorage 清空购物车
+  const clearCart = () => {
+    if (typeof window !== 'undefined') {
+      const cartKeys = Object.keys(localStorage).filter(key => key.startsWith('cart-'))
+      cartKeys.forEach(key => localStorage.removeItem(key))
+    }
+  }
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -27,13 +66,17 @@ export default function OrdersPage() {
         .from('orders')
         .select(`
           *,
-          children (*)
+          children (*),
+          order_details (
+            *,
+            menu_items (*)
+          )
         `)
         .eq('parent_id', user.id)
-        .order('created_at', { ascending: false })
+        .order('order_date', { ascending: false })
 
       if (!error && data) {
-        setOrders(data as OrderWithChild[])
+        setOrders(data as OrderWithDetails[])
       }
       setLoading(false)
     }
@@ -41,27 +84,111 @@ export default function OrdersPage() {
     fetchOrders()
   }, [supabase])
 
+  // 检测支付成功
+  useEffect(() => {
+    const paymentSuccess = searchParams.get('payment_success')
+    if (paymentSuccess === 'true') {
+      // 清空购物车
+      clearCart()
+      // 显示成功提示
+      toast.success('Payment successful! Your orders have been confirmed.')
+      // 清理URL参数
+      window.history.replaceState({}, '', '/dashboard/orders')
+    }
+  }, [searchParams])
+
+  // Group orders by week -> child -> date
+  const weekGroups = useMemo(() => {
+    const groups: WeekGroup[] = []
+    
+    orders.forEach((order) => {
+      const orderDate = parseISO(order.order_date)
+      const weekStart = startOfWeek(orderDate, { weekStartsOn: 1 })
+      const weekEnd = endOfWeek(orderDate, { weekStartsOn: 1 })
+      const weekKey = format(weekStart, 'yyyy-MM-dd')
+      const weekLabel = `${format(weekStart, 'MMM d')} - ${format(weekEnd, 'd')}`
+      
+      // Find or create week group
+      let weekGroup = groups.find(w => w.weekKey === weekKey)
+      if (!weekGroup) {
+        weekGroup = {
+          weekKey,
+          weekLabel,
+          startDate: weekStart,
+          endDate: weekEnd,
+          children: [],
+          total: 0
+        }
+        groups.push(weekGroup)
+      }
+      
+      // Find or create child group
+      let childGroup = weekGroup.children.find(c => c.childId === order.child_id)
+      if (!childGroup) {
+        childGroup = {
+          childId: order.child_id,
+          childName: order.children?.name || 'Unknown',
+          days: [],
+          total: 0
+        }
+        weekGroup.children.push(childGroup)
+      }
+      
+      // Add day order
+      childGroup.days.push({
+        order,
+        items: order.order_details || []
+      })
+      
+      childGroup.total += order.total_amount
+      weekGroup.total += order.total_amount
+    })
+    
+    // Sort weeks, children, and days
+    groups.sort((a, b) => b.startDate.getTime() - a.startDate.getTime())
+    groups.forEach(week => {
+      week.children.sort((a, b) => a.childName.localeCompare(b.childName))
+      week.children.forEach(child => {
+        child.days.sort((a, b) => 
+          parseISO(b.order.order_date).getTime() - parseISO(a.order.order_date).getTime()
+        )
+      })
+    })
+    
+    return groups
+  }, [orders])
+
+  const toggleWeek = (weekKey: string) => {
+    const newExpanded = new Set(expandedWeeks)
+    if (newExpanded.has(weekKey)) {
+      newExpanded.delete(weekKey)
+    } else {
+      newExpanded.add(weekKey)
+    }
+    setExpandedWeeks(newExpanded)
+  }
+  
+  const toggleChild = (weekKey: string, childId: string) => {
+    const key = `${weekKey}-${childId}`
+    const newExpanded = new Set(expandedChildren)
+    if (newExpanded.has(key)) {
+      newExpanded.delete(key)
+    } else {
+      newExpanded.add(key)
+    }
+    setExpandedChildren(newExpanded)
+  }
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'paid':
-        return <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded-full text-xs">已支付</span>
+        return <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">✓ Paid</span>
       case 'pending_payment':
-        return <span className="px-2 py-1 bg-orange-500/20 text-orange-400 rounded-full text-xs">待支付</span>
+        return <span className="px-2 py-1 bg-orange-100 text-orange-700 rounded-full text-xs font-medium">⏳ Pending</span>
       case 'cancelled':
-        return <span className="px-2 py-1 bg-red-500/20 text-red-400 rounded-full text-xs">已取消</span>
+        return <span className="px-2 py-1 bg-red-100 text-red-700 rounded-full text-xs font-medium">✗ Cancelled</span>
       default:
-        return <span className="px-2 py-1 bg-slate-500/20 text-slate-400 rounded-full text-xs">{status}</span>
-    }
-  }
-
-  const getFulfillmentBadge = (status: string) => {
-    switch (status) {
-      case 'delivered':
-        return <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded-full text-xs">已送达</span>
-      case 'pending_delivery':
-        return <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded-full text-xs">待配送</span>
-      default:
-        return <span className="px-2 py-1 bg-slate-500/20 text-slate-400 rounded-full text-xs">{status}</span>
+        return <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">{status}</span>
     }
   }
 
@@ -73,95 +200,141 @@ export default function OrdersPage() {
     )
   }
 
+  if (orders.length === 0) {
+    return (
+      <div className="px-4 py-8 flex flex-col items-center justify-center min-h-[60vh]">
+        <ShoppingBag className="h-16 w-16 text-gray-400 mb-4" />
+        <h2 className="text-xl font-semibold text-gray-900 mb-2">No orders yet</h2>
+        <p className="text-gray-600 text-center mb-6">
+          You haven&apos;t placed any orders
+        </p>
+        <Link href="/dashboard/order">
+          <Button className="bg-orange-500 hover:bg-orange-600 text-white">
+            Browse Menu
+          </Button>
+        </Link>
+      </div>
+    )
+  }
+
   return (
-    <div className="space-y-6 px-4 py-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-800">订单历史</h1>
-        <p className="text-gray-600">查看您的所有订单记录</p>
+    <div className="px-4 py-4 pb-24">
+      {/* Header */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">Order History</h1>
+        <p className="text-gray-600">View all your past orders</p>
       </div>
 
-      {orders.length === 0 ? (
-        <Card className="bg-white border-gray-200 shadow-sm">
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <span className="text-6xl mb-4">📋</span>
-            <h3 className="text-xl font-semibold text-gray-800 mb-2">暂无订单</h3>
-            <p className="text-gray-600">您还没有任何订单记录</p>
-          </CardContent>
-        </Card>
-      ) : (
-        <>
-          {/* Mobile Card View */}
-          <div className="grid grid-cols-1 gap-4 md:hidden">
-            {orders.map((order) => (
-              <Card key={order.id} className="bg-white border-gray-200 shadow-sm">
-                <CardHeader className="pb-2">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <CardTitle className="text-gray-800 text-base">
-                        {order.children?.name || 'Unknown'}
-                      </CardTitle>
-                      <CardDescription className="text-gray-600">
-                        {new Date(order.order_date).toLocaleDateString('zh-CN', {
-                          weekday: 'long',
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric'
-                        })}
-                      </CardDescription>
-                    </div>
-                    <span className="text-orange-500 font-bold">${order.total_amount}</span>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <div className="flex gap-2">
-                    {getStatusBadge(order.status)}
-                    {getFulfillmentBadge(order.fulfillment_status)}
-                  </div>
-                  {order.special_requests && (
-                    <p className="text-sm text-gray-500">备注: {order.special_requests}</p>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+      {/* Orders Grouped by Week -> Child -> Date */}
+      <div className="space-y-4">
+        {weekGroups.map((week) => (
+          <Card key={week.weekKey} className="bg-white border-gray-200 shadow-sm">
+            {/* Week Header */}
+            <button
+              onClick={() => toggleWeek(week.weekKey)}
+              className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <Calendar className="h-5 w-5 text-orange-500" />
+                <div className="text-left">
+                  <p className="text-gray-900 font-semibold">{week.weekLabel}</p>
+                  <p className="text-gray-600 text-sm">{week.children.length} {week.children.length === 1 ? 'child' : 'children'}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <p className="text-orange-500 font-bold text-lg">{formatCurrency(week.total)}</p>
+                {expandedWeeks.has(week.weekKey) ? 
+                  <ChevronUp className="h-5 w-5 text-gray-400" /> : 
+                  <ChevronDown className="h-5 w-5 text-gray-400" />
+                }
+              </div>
+            </button>
 
-          {/* Desktop Table View */}
-          <Card className="hidden md:block bg-white border-gray-200 shadow-sm">
-            <Table>
-              <TableHeader>
-                <TableRow className="border-gray-200 hover:bg-gray-50">
-                  <TableHead className="text-gray-700">订单日期</TableHead>
-                  <TableHead className="text-gray-700">孩子</TableHead>
-                  <TableHead className="text-gray-700">金额</TableHead>
-                  <TableHead className="text-gray-700">支付状态</TableHead>
-                  <TableHead className="text-gray-700">配送状态</TableHead>
-                  <TableHead className="text-gray-700">创建时间</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {orders.map((order) => (
-                  <TableRow key={order.id} className="border-gray-200 hover:bg-gray-50">
-                    <TableCell className="text-gray-800">
-                      {new Date(order.order_date).toLocaleDateString('zh-CN')}
-                    </TableCell>
-                    <TableCell className="text-gray-700">
-                      {order.children?.name || 'Unknown'}
-                    </TableCell>
-                    <TableCell className="text-orange-500 font-semibold">
-                      ${order.total_amount}
-                    </TableCell>
-                    <TableCell>{getStatusBadge(order.status)}</TableCell>
-                    <TableCell>{getFulfillmentBadge(order.fulfillment_status)}</TableCell>
-                    <TableCell className="text-gray-500 text-sm">
-                      {new Date(order.created_at).toLocaleString('zh-CN')}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            {/* Week Content */}
+            {expandedWeeks.has(week.weekKey) && (
+              <div className="border-t border-gray-200">
+                {week.children.map((child) => {
+                  const childKey = `${week.weekKey}-${child.childId}`
+                  const isChildExpanded = expandedChildren.has(childKey)
+                  
+                  return (
+                    <div key={child.childId} className="border-b border-gray-100 last:border-b-0">
+                      {/* Child Header */}
+                      <button
+                        onClick={() => toggleChild(week.weekKey, child.childId)}
+                        className="w-full p-4 pl-8 flex items-center justify-between hover:bg-gray-50 transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <User className="h-4 w-4 text-blue-500" />
+                          <div className="text-left">
+                            <p className="text-gray-900 font-medium">{child.childName}</p>
+                            <p className="text-gray-600 text-xs">{child.days.length} {child.days.length === 1 ? 'order' : 'orders'}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <p className="text-orange-500 font-semibold">{formatCurrency(child.total)}</p>
+                          {isChildExpanded ? 
+                            <ChevronUp className="h-4 w-4 text-gray-400" /> : 
+                            <ChevronDown className="h-4 w-4 text-gray-400" />
+                          }
+                        </div>
+                      </button>
+
+                      {/* Child Orders by Date */}
+                      {isChildExpanded && (
+                        <div className="bg-gray-50/50">
+                          {child.days.map((day) => (
+                            <div key={day.order.id} className="p-4 pl-12 border-t border-gray-100 first:border-t-0">
+                              {/* Day Header */}
+                              <div className="flex items-center justify-between mb-3">
+                                <div>
+                                  <p className="text-gray-700 font-medium">
+                                    {format(parseISO(day.order.order_date), 'EEEE, MMM d, yyyy')}
+                                  </p>
+                                  <div className="flex items-center gap-2 mt-1">
+                                    {getStatusBadge(day.order.status)}
+                                  </div>
+                                </div>
+                                <p className="text-orange-500 font-bold">{formatCurrency(day.order.total_amount)}</p>
+                              </div>
+
+                              {/* Order Items */}
+                              <div className="space-y-2">
+                                {day.items.map((item, index) => (
+                                  <div key={index} className="flex items-center justify-between bg-white rounded-lg p-2 text-sm">
+                                    <div className="flex-1">
+                                      <p className="text-gray-900 font-medium">{item.menu_items.name}</p>
+                                      <p className="text-gray-600 text-xs">
+                                        {item.portion_type} × {item.quantity}
+                                      </p>
+                                    </div>
+                                    <p className="text-gray-700 font-medium">
+                                      {formatCurrency(item.unit_price_at_time_of_order * item.quantity)}
+                                    </p>
+                                  </div>
+                                ))}
+                              </div>
+
+                              {/* Special Requests */}
+                              {day.order.special_requests && (
+                                <div className="mt-2 bg-blue-50 border border-blue-200 rounded-lg p-2">
+                                  <p className="text-xs text-blue-800">
+                                    <strong>Note:</strong> {day.order.special_requests}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </Card>
-        </>
-      )}
+        ))}
+      </div>
     </div>
   )
 }
