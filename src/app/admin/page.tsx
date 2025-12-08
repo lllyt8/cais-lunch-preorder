@@ -2,6 +2,7 @@
 
 import { useAuth } from '@/hooks/use-auth'
 import { Card, CardContent } from '@/components/ui/card'
+import Link from 'next/link'
 import { 
   UtensilsCrossed, 
   ShoppingCart, 
@@ -85,9 +86,7 @@ export default function AdminDashboard() {
                   <p className="text-sm text-gray-600 font-medium">{stat.label}</p>
                   <p className="text-3xl font-bold mt-2 text-gray-900">{stat.value}</p>
                   <p className={`text-sm mt-2 ${
-                    stat.changeType === 'positive' ? 'text-green-600' : 
-                    stat.changeType === 'negative' ? 'text-red-600' : 
-                    'text-gray-600'
+                    stat.changeType === 'positive' ? 'text-green-600' : 'text-gray-600'
                   }`}>
                     {stat.change}
                   </p>
@@ -167,27 +166,27 @@ export default function AdminDashboard() {
         <CardContent className="p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-3">快速开始</h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <a
+            <Link
               href="/admin/menu"
               className="flex items-center gap-3 p-3 bg-white rounded-lg hover:shadow-md transition-shadow"
             >
               <UtensilsCrossed className="h-5 w-5 text-orange-500" />
               <span className="font-medium text-gray-900">管理菜单</span>
-            </a>
-            <a
+            </Link>
+            <Link
               href="/admin/orders"
               className="flex items-center gap-3 p-3 bg-white rounded-lg hover:shadow-md transition-shadow"
             >
               <ShoppingCart className="h-5 w-5 text-blue-500" />
               <span className="font-medium text-gray-900">查看订单</span>
-            </a>
-            <a
+            </Link>
+            <Link
               href="/admin/users"
               className="flex items-center gap-3 p-3 bg-white rounded-lg hover:shadow-md transition-shadow"
             >
               <Users className="h-5 w-5 text-green-500" />
               <span className="font-medium text-gray-900">用户管理</span>
-            </a>
+            </Link>
           </div>
         </CardContent>
       </Card>
