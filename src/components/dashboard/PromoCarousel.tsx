@@ -8,6 +8,8 @@ import {
 import { Card } from '@/components/ui/card'
 import Autoplay from 'embla-carousel-autoplay'
 import { useRef } from 'react'
+import { UtensilsCrossed, Sparkles, Clock } from 'lucide-react'
+import Image from 'next/image'
 
 const promoSlides = [
   {
@@ -15,24 +17,27 @@ const promoSlides = [
     title: 'Weekly Special',
     subtitle: 'Sun Bento Box',
     description: 'Fresh & healthy lunch for your kids',
-    bgColor: 'bg-orange-500',
-    emoji: '🍱',
+    gradient: 'from-orange-500/95 via-orange-600/90 to-orange-700/95',
+    icon: UtensilsCrossed,
+    bgImage: 'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=800&q=80',
   },
   {
     id: 2,
     title: 'Holiday Greetings',
     subtitle: 'Season of Joy',
     description: 'Special holiday menu coming soon!',
-    bgColor: 'bg-emerald-500',
-    emoji: '🎄',
+    gradient: 'from-emerald-500/95 via-emerald-600/90 to-teal-700/95',
+    icon: Sparkles,
+    bgImage: 'https://images.unsplash.com/photo-1482275548304-a58859dc31b7?w=800&q=80',
   },
   {
     id: 3,
     title: 'Order Reminder',
     subtitle: 'Cutoff: Thursday 5PM',
-    description: "Don&apos;t forget to order for next week",
-    bgColor: 'bg-violet-500',
-    emoji: '⏰',
+    description: "Don't forget to order for next week",
+    gradient: 'from-violet-500/95 via-purple-600/90 to-indigo-700/95',
+    icon: Clock,
+    bgImage: 'https://images.unsplash.com/photo-1495521821757-a1efb6729352?w=800&q=80',
   },
 ]
 
@@ -55,24 +60,44 @@ export function PromoCarousel() {
         <CarouselContent className="-ml-2">
           {promoSlides.map((slide) => (
             <CarouselItem key={slide.id} className="pl-2 basis-[85%] md:basis-1/2">
-              <Card className={`relative overflow-hidden ${slide.bgColor} border-0 rounded-2xl shadow-lg transform transition-transform hover:scale-[1.02]`}>
-                <div className="p-5 min-h-[120px] flex items-center justify-between">
-                  <div className="space-y-1">
-                    <p className="text-white/80 text-xs font-medium uppercase tracking-wide">
+              <Card className="relative overflow-hidden border-0 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 group">
+                {/* Background Image */}
+                <div className="absolute inset-0">
+                  <Image 
+                    src={slide.bgImage}
+                    alt={slide.subtitle}
+                    fill
+                    className="object-cover opacity-40 group-hover:scale-105 transition-transform duration-500"
+                    sizes="(max-width: 768px) 85vw, 50vw"
+                  />
+                </div>
+                
+                {/* Gradient Overlay */}
+                <div className={`absolute inset-0 bg-gradient-to-br ${slide.gradient}`} />
+                
+                {/* Content */}
+                <div className="relative p-5 min-h-[140px] flex items-center justify-between">
+                  <div className="space-y-1.5 flex-1">
+                    <p className="text-white/90 text-xs font-semibold uppercase tracking-wide">
                       {slide.title}
                     </p>
-                    <h3 className="text-white text-xl font-bold">
+                    <h3 className="text-white text-xl font-bold leading-tight">
                       {slide.subtitle}
                     </h3>
-                    <p className="text-white/70 text-sm">
+                    <p className="text-white/85 text-sm leading-relaxed">
                       {slide.description}
                     </p>
                   </div>
-                  <span className="text-5xl opacity-80">{slide.emoji}</span>
+                  
+                  {/* Icon in glass container */}
+                  <div className="ml-4 w-14 h-14 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-lg border border-white/30 group-hover:scale-110 transition-transform duration-300">
+                    <slide.icon className="w-7 h-7 text-white" strokeWidth={2.5} />
+                  </div>
                 </div>
-                {/* Decorative circles */}
-                <div className="absolute -bottom-6 -right-6 w-24 h-24 rounded-full bg-white/10" />
-                <div className="absolute -top-3 -right-3 w-12 h-12 rounded-full bg-white/5" />
+                
+                {/* Decorative elements */}
+                <div className="absolute -bottom-8 -right-8 w-32 h-32 rounded-full bg-white/10 blur-2xl" />
+                <div className="absolute -top-4 -right-4 w-16 h-16 rounded-full bg-white/10" />
               </Card>
             </CarouselItem>
           ))}

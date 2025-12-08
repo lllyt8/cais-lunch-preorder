@@ -276,9 +276,12 @@ export default function OrderPage() {
                       }
                       setExpandedCategories(newExpanded)
                     }}
-                    className="w-full flex items-center gap-3 pb-2 border-b-2 border-orange-100 hover:border-orange-300 transition-colors"
+                    className="w-full flex items-center gap-3 pb-2 border-b-2 border-orange-100 hover:border-orange-300 transition-colors group"
                   >
-                    <span className="text-4xl">{category.emoji}</span>
+                    {/* Icon with gradient background */}
+                    <div className={`relative w-12 h-12 rounded-xl bg-linear-to-br ${category.gradient} flex items-center justify-center shadow-sm group-hover:shadow-md transition-all duration-300 group-hover:scale-105`}>
+                      <category.icon className="w-6 h-6 text-white" strokeWidth={2.5} />
+                    </div>
                     <div className="flex-1 text-left">
                       <h2 className="text-xl font-bold text-gray-900">
                         {category.nameCn}

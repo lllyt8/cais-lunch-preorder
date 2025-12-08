@@ -21,6 +21,7 @@ export interface MenuItem {
   name: string;
   description?: string;
   base_price: number;
+  half_order_price?: number; // 半份价格，如果为null则不支持半份
   category?: string;
   is_full_order_only: boolean;
   has_tofu_option: boolean;

@@ -1,22 +1,25 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { User, ShoppingBag, ChevronDown, Calendar } from 'lucide-react'
+import { User, ShoppingBag, ChevronDown, Calendar, Shield } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
 import { useWeekSelector } from '@/hooks/use-week-selector'
 import { useCart } from '@/hooks/use-cart'
+import { useAuth } from '@/hooks/use-auth'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 
 export function Header() {
   const { currentWeekIndex, setCurrentWeekIndex, getWeekOptions } = useWeekSelector()
   const { getTotalItemCount } = useCart()
+  const { isAdmin, isStaff } = useAuth()
   const [mounted, setMounted] = useState(false)
   
   // These will recompute whenever currentWeekIndex changes
@@ -33,12 +36,35 @@ export function Header() {
   return (
     <header className="sticky top-0 z-50 bg-[#ececec]">
       <div className="flex items-center justify-between px-4 py-3">
-        {/* Left: Profile */}
-        <Link href="/dashboard/profile">
-          <Button variant="ghost" size="icon" className="rounded-full bg-[#ececec] hover:bg-gray-200">
-            <User className="h-5 w-5 text-gray-600" />
-          </Button>
-        </Link>
+        {/* Left: Profile Menu */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="rounded-full bg-[#ececec] hover:bg-gray-200">
+              <User className="h-5 w-5 text-gray-600" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-48 bg-white border-gray-200">
+            <DropdownMenuItem asChild className="cursor-pointer">
+              <Link href="/dashboard/profile" className="flex items-center">
+                <User className="h-4 w-4 mr-2" />
+                个人资料
+              </Link>
+            </DropdownMenuItem>
+            
+            {/* Show Admin link only for admin/staff */}
+            {(isAdmin || isStaff) && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild className="cursor-pointer">
+                  <Link href="/admin" className="flex items-center text-orange-600">
+                    <Shield className="h-4 w-4 mr-2" />
+                    管理后台
+                  </Link>
+                </DropdownMenuItem>
+              </>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         {/* Center: Week Selector */}
         <DropdownMenu>

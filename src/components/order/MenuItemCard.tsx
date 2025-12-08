@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { MenuItem } from '@/types/database'
 import { DIETARY_TAGS } from '@/constants/dietary-tags'
+import { UtensilsCrossed } from 'lucide-react'
 
 interface MenuItemCardProps {
   item: MenuItem
@@ -15,41 +16,50 @@ interface MenuItemCardProps {
 
 export function MenuItemCard({ item, onAdd }: MenuItemCardProps) {
   const [selectedPortion, setSelectedPortion] = useState<'Full Order' | 'Half Order'>('Full Order')
-  const isDumplings = item.name.toLowerCase().includes('dumpling')
+  
+  // 判断是否支持半份：有 half_order_price 且不是仅全份
+  const supportsHalfOrder = !item.is_full_order_only && item.half_order_price != null
   
   // 获取当前菜品的所有激活标签
   const activeTags = DIETARY_TAGS.filter(tag => item[tag.key])
   
   const getPrice = () => {
-    if (isDumplings) {
-      return selectedPortion === 'Full Order' ? 13 : 11
+    if (selectedPortion === 'Half Order' && item.half_order_price != null) {
+      return item.half_order_price
     }
     return item.base_price
   }
 
-  const getPortionLabel = () => {
-    if (isDumplings) {
-      return selectedPortion === 'Full Order' ? '8 pieces' : '6 pieces'
-    }
-    return selectedPortion
-  }
-
   return (
-    <Card className="bg-white border-gray-200 hover:border-orange-300 transition-all shadow-sm overflow-hidden">
+    <Card className="group bg-white border-gray-200 hover:border-orange-300 transition-all duration-300 shadow-[0_2px_8px_rgba(0,0,0,0.04),0_1px_2px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_30px_rgba(249,115,22,0.12),0_2px_8px_rgba(0,0,0,0.08)] hover:-translate-y-1 overflow-hidden">
       {/* 菜品图片 */}
-      <div className="relative h-48 bg-gradient-to-br from-gray-100 to-gray-50">
+      <div className="relative h-48 bg-gradient-to-br from-orange-50 via-white to-orange-100">
         {item.image_url ? (
           <Image 
             src={item.image_url} 
             alt={item.name}
             fill
-            className="object-cover"
+            className="object-cover transition-transform duration-500 group-hover:scale-105"
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
           />
         ) : (
-          <div className="flex items-center justify-center h-full">
-            <span className="text-6xl opacity-30">🍱</span>
-          </div>
+          <>
+            {/* 装饰性渐变圆圈 */}
+            <div className="absolute inset-0 overflow-hidden">
+              <div className="absolute top-[-20%] right-[-20%] w-48 h-48 rounded-full bg-orange-200/30 blur-3xl" />
+              <div className="absolute bottom-[-20%] left-[-20%] w-40 h-40 rounded-full bg-orange-300/20 blur-2xl" />
+            </div>
+            
+            {/* 中心图标 */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="relative">
+                <div className="absolute inset-0 bg-orange-500/20 blur-xl rounded-full" />
+                <div className="relative bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-orange-100">
+                  <UtensilsCrossed className="w-12 h-12 text-orange-500" strokeWidth={1.5} />
+                </div>
+              </div>
+            </div>
+          </>
         )}
         
         {/* Tofu Option Badge */}
@@ -93,8 +103,8 @@ export function MenuItemCard({ item, onAdd }: MenuItemCardProps) {
           </div>
         )}
 
-        {/* Portion Selector for Dumplings */}
-        {isDumplings && !item.is_full_order_only && (
+        {/* Portion Selector - 显示支持半份的菜品 */}
+        {supportsHalfOrder && (
           <Select 
             value={selectedPortion} 
             onValueChange={(v) => setSelectedPortion(v as 'Full Order' | 'Half Order')}
@@ -104,10 +114,10 @@ export function MenuItemCard({ item, onAdd }: MenuItemCardProps) {
             </SelectTrigger>
             <SelectContent className="bg-white border-gray-200">
               <SelectItem value="Full Order" className="text-gray-900">
-                Full Order (8 pieces) - $13.00
+                Full Order - ${item.base_price.toFixed(2)}
               </SelectItem>
               <SelectItem value="Half Order" className="text-gray-900">
-                Half Order (6 pieces) - $11.00
+                Half Order - ${item.half_order_price?.toFixed(2)}
               </SelectItem>
             </SelectContent>
           </Select>
@@ -119,9 +129,9 @@ export function MenuItemCard({ item, onAdd }: MenuItemCardProps) {
             <span className="text-orange-500 font-bold text-xl">
               ${getPrice().toFixed(2)}
             </span>
-            {isDumplings && (
+            {supportsHalfOrder && selectedPortion === 'Half Order' && (
               <span className="text-gray-500 text-sm ml-2">
-                ({getPortionLabel()})
+                (Half Order)
               </span>
             )}
             {item.is_full_order_only && (
@@ -132,8 +142,8 @@ export function MenuItemCard({ item, onAdd }: MenuItemCardProps) {
           </div>
           <Button
             size="sm"
-            onClick={() => onAdd(item, isDumplings ? selectedPortion : 'Full Order')}
-            className="bg-orange-500 hover:bg-orange-600 text-white font-medium shadow-sm"
+            onClick={() => onAdd(item, supportsHalfOrder ? selectedPortion : 'Full Order')}
+            className="bg-orange-500 hover:bg-orange-600 active:scale-95 text-white font-medium shadow-sm hover:shadow-md transition-all duration-200"
           >
             + 添加
           </Button>
