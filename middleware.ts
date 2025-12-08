@@ -13,7 +13,10 @@ export const config = {
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      * - public folder
+     * - / (landing page)
+     * - /menu (public menu page)
+     * - /login, /register (auth pages)
      */
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|^$|menu|login|register|api|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
