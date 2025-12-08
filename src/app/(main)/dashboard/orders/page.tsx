@@ -309,7 +309,7 @@ export default function OrdersPage() {
                                       </p>
                                     </div>
                                     <p className="text-gray-700 font-medium">
-                                      {formatCurrency(item.unit_price_at_time_of_order * item.quantity)}
+                                      {formatCurrency(item.unit_price * item.quantity)}
                                     </p>
                                   </div>
                                 ))}
