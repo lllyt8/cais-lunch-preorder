@@ -72,23 +72,33 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 via-amber-50 to-orange-100 p-4 relative overflow-hidden">
+      {/* Decorative background elements */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute top-20 left-10 w-72 h-72 bg-orange-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
+        <div className="absolute top-40 right-10 w-72 h-72 bg-amber-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
+        <div className="absolute -bottom-8 left-1/2 w-72 h-72 bg-yellow-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-4000"></div>
+      </div>
+
+      <div className="w-full max-w-md relative z-10">
         {/* Logo/Brand */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-amber-400 to-orange-500 bg-clip-text text-transparent">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-orange-400 to-amber-500 rounded-2xl shadow-xl mb-4 transform hover:scale-110 transition-transform">
+            <span className="text-4xl">🍱</span>
+          </div>
+          <h1 className="text-5xl font-bold bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent mb-2">
             CAIS Lunch
           </h1>
-          <p className="text-slate-400 mt-2">午餐预订系统</p>
+          <p className="text-gray-600 text-lg">午餐预订系统</p>
         </div>
 
-        <Card className="border-slate-700 bg-slate-800/50 backdrop-blur-sm">
+        <Card className="border-gray-200 bg-white/80 backdrop-blur-md shadow-2xl">
           <Tabs defaultValue="login" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 bg-slate-700/50">
-              <TabsTrigger value="login" className="data-[state=active]:bg-slate-600">
+            <TabsList className="grid w-full grid-cols-2 bg-gray-100">
+              <TabsTrigger value="login" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">
                 登录
               </TabsTrigger>
-              <TabsTrigger value="register" className="data-[state=active]:bg-slate-600">
+              <TabsTrigger value="register" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">
                 注册
               </TabsTrigger>
             </TabsList>
@@ -96,14 +106,14 @@ export default function LoginPage() {
             <TabsContent value="login">
               <form onSubmit={handleLogin}>
                 <CardHeader>
-                  <CardTitle className="text-slate-100">欢迎回来</CardTitle>
-                  <CardDescription className="text-slate-400">
+                  <CardTitle className="text-gray-900">欢迎回来</CardTitle>
+                  <CardDescription className="text-gray-600">
                     登录您的账户以管理午餐订单
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="email" className="text-slate-200">邮箱</Label>
+                    <Label htmlFor="email" className="text-gray-700">邮箱</Label>
                     <Input
                       id="email"
                       type="email"
@@ -111,11 +121,11 @@ export default function LoginPage() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
-                      className="bg-slate-700/50 border-slate-600 text-slate-100 placeholder:text-slate-500"
+                      className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-orange-500 focus:ring-orange-500"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="password" className="text-slate-200">密码</Label>
+                    <Label htmlFor="password" className="text-gray-700">密码</Label>
                     <Input
                       id="password"
                       type="password"
@@ -123,7 +133,7 @@ export default function LoginPage() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
-                      className="bg-slate-700/50 border-slate-600 text-slate-100 placeholder:text-slate-500"
+                      className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-orange-500 focus:ring-orange-500"
                     />
                   </div>
                   {error && (
@@ -145,14 +155,14 @@ export default function LoginPage() {
             <TabsContent value="register">
               <form onSubmit={handleSignUp}>
                 <CardHeader>
-                  <CardTitle className="text-slate-100">创建账户</CardTitle>
-                  <CardDescription className="text-slate-400">
+                  <CardTitle className="text-gray-900">创建账户</CardTitle>
+                  <CardDescription className="text-gray-600">
                     注册新账户开始为孩子订餐
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="reg-email" className="text-slate-200">邮箱</Label>
+                    <Label htmlFor="reg-email" className="text-gray-700">邮箱</Label>
                     <Input
                       id="reg-email"
                       type="email"
@@ -160,11 +170,11 @@ export default function LoginPage() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
-                      className="bg-slate-700/50 border-slate-600 text-slate-100 placeholder:text-slate-500"
+                      className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-orange-500 focus:ring-orange-500"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="reg-password" className="text-slate-200">密码</Label>
+                    <Label htmlFor="reg-password" className="text-gray-700">密码</Label>
                     <Input
                       id="reg-password"
                       type="password"
@@ -173,7 +183,7 @@ export default function LoginPage() {
                       onChange={(e) => setPassword(e.target.value)}
                       required
                       minLength={6}
-                      className="bg-slate-700/50 border-slate-600 text-slate-100 placeholder:text-slate-500"
+                      className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-orange-500 focus:ring-orange-500"
                     />
                   </div>
                   {error && (
@@ -197,7 +207,7 @@ export default function LoginPage() {
           </Tabs>
         </Card>
 
-        <p className="text-center text-slate-500 text-sm mt-6">
+        <p className="text-center text-gray-500 text-sm mt-6">
           © 2024 CAIS Lunch Preorder System
         </p>
       </div>
