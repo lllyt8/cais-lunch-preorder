@@ -1,0 +1,43 @@
+# Dependabot 配置文件
+# 自动检测和创建 PR 来更新依赖
+
+version: 2
+updates:
+  # 监控 npm 依赖
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"  # 每周检查一次（可选：daily, weekly, monthly）
+      day: "monday"       # 每周一检查
+      time: "09:00"       # UTC 时间 09:00
+    # 自动创建 PR 的规则
+    open-pull-requests-limit: 10
+    # 分组更新（避免 PR 过多）
+    groups:
+      # 主要依赖一起更新
+      production-dependencies:
+        patterns:
+          - "next"
+          - "react"
+          - "react-dom"
+      # 开发依赖一起更新
+      development-dependencies:
+        dependency-type: "development"
+        patterns:
+          - "*"
+    # 允许的更新类型
+    allow:
+      - dependency-type: "direct"        # 直接依赖
+      - dependency-type: "indirect"      # 间接依赖
+    # 忽略特定包（如果需要）
+    ignore:
+      # - dependency-name: "package-name"
+      #   versions: ["1.x", "2.x"]
+    # PR 标签
+    labels:
+      - "dependencies"
+      - "automated"
+    # 提交消息前缀
+    commit-message:
+      prefix: "chore"
+      include: "scope"
