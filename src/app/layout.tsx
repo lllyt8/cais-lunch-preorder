@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "CAIS Lunch Preorder",
-  description: "午餐预订系统 - 为孩子订购美味午餐",
+  title: "My Cup Of Tea - School Lunch Delivery",
+  description: "Fresh, nutritious school lunches delivered daily since 2017",
 };
 
 export default function RootLayout({
@@ -26,7 +26,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}
       >
         <QueryProvider>
           {children}
