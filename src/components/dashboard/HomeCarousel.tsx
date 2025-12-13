@@ -6,7 +6,7 @@ import {
   CarouselItem,
 } from '@/components/ui/carousel'
 import { Card } from '@/components/ui/card'
-import { UtensilsCrossed, RefreshCw, Gift, Bell, Sparkles } from 'lucide-react'
+import { UtensilsCrossed, RefreshCw, Gift, Bell } from 'lucide-react'
 import Link from 'next/link'
 
 const carouselItems = [
@@ -29,21 +29,14 @@ const carouselItems = [
     title: 'Holiday Special',
     icon: Gift,
     bgColor: 'bg-rose-500',
-    href: '#',
+    href: '/dashboard/holiday',
   },
   {
     id: 'promo-reminder',
     title: 'Reminders',
     icon: Bell,
     bgColor: 'bg-violet-500',
-    href: '#',
-  },
-  {
-    id: 'promo-new',
-    title: 'New Items',
-    icon: Sparkles,
-    bgColor: 'bg-amber-500',
-    href: '#',
+    href: '/dashboard/reminders',
   },
 ]
 

@@ -1,10 +1,30 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
-import { UtensilsCrossed, Clock, Heart, ChefHat } from 'lucide-react'
+import { UtensilsCrossed, Clock, Heart, ChefHat, ChevronLeft, ChevronRight } from 'lucide-react'
 import Link from 'next/link'
 
+const heroImages = [
+  { src: '/mcot_pic/All_pop_food.jpg', alt: 'Delicious healthy lunch' },
+  { src: '/mcot_pic/Dumpling.png', alt: 'Fresh dumplings' },
+  { src: '/mcot_pic/Orange_logo.png', alt: 'My Cup Of Tea' },
+]
+
 export default function LandingPage() {
+  const [currentSlide, setCurrentSlide] = useState(0)
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % heroImages.length)
+    }, 4000)
+    return () => clearInterval(timer)
+  }, [])
+
+  const goToSlide = (index: number) => setCurrentSlide(index)
+  const prevSlide = () => setCurrentSlide((prev) => (prev - 1 + heroImages.length) % heroImages.length)
+  const nextSlide = () => setCurrentSlide((prev) => (prev + 1) % heroImages.length)
+
   return (
     <div className="min-h-screen bg-[#FAF8F3]">
       {/* Sticky Navigation */}
@@ -85,14 +105,47 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* Right: Hero Image */}
+          {/* Right: Hero Image Carousel */}
           <div className="relative">
             <div className="relative rounded-2xl overflow-hidden shadow-2xl">
-              <img
-                src="/mcot_pic/All_pop_food.jpg"
-                alt="Delicious healthy lunch"
-                className="w-full h-[500px] object-cover brightness-110"
-              />
+              {heroImages.map((image, index) => (
+                <img
+                  key={index}
+                  src={image.src}
+                  alt={image.alt}
+                  className={`w-full h-[500px] object-cover brightness-110 transition-opacity duration-700 ${
+                    index === currentSlide ? 'opacity-100' : 'opacity-0 absolute inset-0'
+                  }`}
+                />
+              ))}
+              {/* Navigation Arrows */}
+              <button
+                onClick={prevSlide}
+                className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/80 hover:bg-white rounded-full flex items-center justify-center shadow-lg transition-all"
+                aria-label="Previous slide"
+              >
+                <ChevronLeft className="w-5 h-5 text-gray-800" />
+              </button>
+              <button
+                onClick={nextSlide}
+                className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/80 hover:bg-white rounded-full flex items-center justify-center shadow-lg transition-all"
+                aria-label="Next slide"
+              >
+                <ChevronRight className="w-5 h-5 text-gray-800" />
+              </button>
+              {/* Dots Indicator */}
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+                {heroImages.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => goToSlide(index)}
+                    className={`w-2.5 h-2.5 rounded-full transition-all ${
+                      index === currentSlide ? 'bg-white w-6' : 'bg-white/50 hover:bg-white/75'
+                    }`}
+                    aria-label={`Go to slide ${index + 1}`}
+                  />
+                ))}
+              </div>
             </div>
             {/* Floating Card */}
             <div className="absolute -bottom-6 -left-6 bg-white rounded-xl p-4 shadow-2xl">
