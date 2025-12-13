@@ -5,23 +5,27 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { BalanceTopup } from '@/components/balance-topup'
-import { LogOut, Mail, Phone, CreditCard, ChevronRight, Settings, HelpCircle, Shield } from 'lucide-react'
+import { LogOut, Mail, Phone, ChevronRight, Settings, User } from 'lucide-react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 
 interface UserProfile {
   id: string
   email: string
+  name?: string
   phone_number?: string
-  account_balance: number
-  stripe_customer_id?: string
 }
 
 export default function ProfilePage() {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
+  const [editingName, setEditingName] = useState(false)
+  const [editingPhone, setEditingPhone] = useState(false)
+  const [name, setName] = useState('')
+  const [phone, setPhone] = useState('')
+  const [saving, setSaving] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -40,11 +44,45 @@ export default function ProfilePage() {
         .single()
 
       setProfile(data as UserProfile)
+      setName(data?.name || data?.email?.split('@')[0] || '')
+      setPhone(data?.phone_number || '')
       setLoading(false)
     }
 
     fetchProfile()
   }, [supabase, router])
+
+  const handleSaveName = async () => {
+    if (!profile) return
+    setSaving(true)
+
+    const { error } = await supabase
+      .from('users')
+      .update({ name })
+      .eq('id', profile.id)
+
+    if (!error) {
+      setProfile({ ...profile, name })
+      setEditingName(false)
+    }
+    setSaving(false)
+  }
+
+  const handleSavePhone = async () => {
+    if (!profile) return
+    setSaving(true)
+
+    const { error } = await supabase
+      .from('users')
+      .update({ phone_number: phone })
+      .eq('id', profile.id)
+
+    if (!error) {
+      setProfile({ ...profile, phone_number: phone })
+      setEditingPhone(false)
+    }
+    setSaving(false)
+  }
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
@@ -70,37 +108,13 @@ export default function ProfilePage() {
       >
         <Avatar className="h-24 w-24 mb-4 ring-4 ring-orange-100 shadow-md">
           <AvatarFallback className="bg-gradient-to-br from-orange-400 to-orange-500 text-white text-3xl font-bold">
-            {profile?.email?.charAt(0).toUpperCase() || 'U'}
+            {(profile?.name || profile?.email)?.charAt(0).toUpperCase() || 'U'}
           </AvatarFallback>
         </Avatar>
         <h1 className="text-xl font-bold text-gray-800">
-          {profile?.email?.split('@')[0] || 'User'}
+          {profile?.name || profile?.email?.split('@')[0] || 'User'}
         </h1>
         <p className="text-gray-500 text-sm">{profile?.email}</p>
-      </motion.div>
-
-      {/* Balance Card */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-      >
-        <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200 shadow-md">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-orange-700 text-sm font-medium">Account Balance</p>
-                <p className="text-orange-600 text-3xl font-bold">
-                  ${(profile?.account_balance || 0).toFixed(2)}
-                </p>
-              </div>
-              <CreditCard className="h-12 w-12 text-orange-300" />
-            </div>
-            <div className="mt-4">
-              <BalanceTopup currentBalance={profile?.account_balance || 0} />
-            </div>
-          </CardContent>
-        </Card>
       </motion.div>
 
       {/* Contact Info */}
@@ -111,9 +125,64 @@ export default function ProfilePage() {
       >
         <Card className="bg-white border-gray-200 shadow-sm">
           <CardHeader className="pb-2">
-            <CardTitle className="text-gray-800 text-base">Contact Information</CardTitle>
+            <CardTitle className="text-gray-800 text-base">Profile Information</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
+            {/* Name Field */}
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50">
+              <User className="h-5 w-5 text-gray-400" />
+              <div className="flex-1">
+                <p className="text-gray-400 text-xs">Name</p>
+                {editingName ? (
+                  <Input
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="text-sm h-8 mt-1 bg-white"
+                    placeholder="Enter your name"
+                    autoFocus
+                  />
+                ) : (
+                  <p className="text-gray-700 text-sm">
+                    {profile?.name || profile?.email?.split('@')[0] || 'Not set'}
+                  </p>
+                )}
+              </div>
+              {editingName ? (
+                <div className="flex gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-gray-500 h-8"
+                    onClick={() => {
+                      setEditingName(false)
+                      setName(profile?.name || profile?.email?.split('@')[0] || '')
+                    }}
+                    disabled={saving}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="bg-orange-500 hover:bg-orange-600 text-white h-8"
+                    onClick={handleSaveName}
+                    disabled={saving}
+                  >
+                    {saving ? 'Saving...' : 'Save'}
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-orange-500"
+                  onClick={() => setEditingName(true)}
+                >
+                  Edit
+                </Button>
+              )}
+            </div>
+
+            {/* Email Field (Read-only) */}
             <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50">
               <Mail className="h-5 w-5 text-gray-400" />
               <div className="flex-1">
@@ -121,15 +190,57 @@ export default function ProfilePage() {
                 <p className="text-gray-700 text-sm">{profile?.email}</p>
               </div>
             </div>
+
+            {/* Phone Field */}
             <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50">
               <Phone className="h-5 w-5 text-gray-400" />
               <div className="flex-1">
                 <p className="text-gray-400 text-xs">Phone</p>
-                <p className="text-gray-700 text-sm">{profile?.phone_number || 'Not set'}</p>
+                {editingPhone ? (
+                  <Input
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="text-sm h-8 mt-1 bg-white"
+                    placeholder="Enter your phone number"
+                    autoFocus
+                  />
+                ) : (
+                  <p className="text-gray-700 text-sm">{profile?.phone_number || 'Not set'}</p>
+                )}
               </div>
-              <Button variant="ghost" size="sm" className="text-orange-500">
-                Edit
-              </Button>
+              {editingPhone ? (
+                <div className="flex gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-gray-500 h-8"
+                    onClick={() => {
+                      setEditingPhone(false)
+                      setPhone(profile?.phone_number || '')
+                    }}
+                    disabled={saving}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="bg-orange-500 hover:bg-orange-600 text-white h-8"
+                    onClick={handleSavePhone}
+                    disabled={saving}
+                  >
+                    {saving ? 'Saving...' : 'Save'}
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-orange-500"
+                  onClick={() => setEditingPhone(true)}
+                >
+                  Edit
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -153,26 +264,6 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
         </Link>
-
-        <Card className="bg-white border-gray-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Shield className="h-5 w-5 text-gray-400" />
-              <span className="text-gray-700">Privacy & Security</span>
-            </div>
-            <ChevronRight className="h-5 w-5 text-gray-400" />
-          </CardContent>
-        </Card>
-
-        <Card className="bg-white border-gray-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <HelpCircle className="h-5 w-5 text-gray-400" />
-              <span className="text-gray-700">Help & Support</span>
-            </div>
-            <ChevronRight className="h-5 w-5 text-gray-400" />
-          </CardContent>
-        </Card>
       </motion.div>
 
       {/* Logout Button */}
@@ -192,8 +283,8 @@ export default function ProfilePage() {
       </motion.div>
 
       {/* App Version */}
-      <p className="text-center text-gray-400 text-xs">
-        CAIS Lunch v1.0.0
+      <p className="text-center text-gray-400 text-xs mt-4">
+        © {new Date().getFullYear()} My Cup Of Tea. All rights reserved.
       </p>
     </div>
   )

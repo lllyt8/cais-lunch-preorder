@@ -17,89 +17,107 @@ import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 
 export function Header() {
-  const { currentWeekIndex, setCurrentWeekIndex, getWeekOptions } = useWeekSelector()
+  const { currentWeekIndex, setCurrentWeekIndex, getWeekOptions, checkAndResetIfNeeded } = useWeekSelector()
   const { getTotalItemCount } = useCart()
   const { isAdmin, isStaff } = useAuth()
   const [mounted, setMounted] = useState(false)
-  
+
   // These will recompute whenever currentWeekIndex changes
   const weekOptions = getWeekOptions()
   const currentWeek = weekOptions[currentWeekIndex] || weekOptions[0]
   const itemCount = getTotalItemCount()
 
   useEffect(() => {
+    // Check if we need to reset the week index due to date change
+    checkAndResetIfNeeded()
+
     // Prevent hydration mismatch by only rendering cart badge on client
-    // eslint-disable-next-line
     setMounted(true)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return (
     <header className="sticky top-0 z-50 bg-[#ececec]">
       <div className="flex items-center justify-between px-4 py-3">
         {/* Left: Profile Menu */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="rounded-full bg-[#ececec] hover:bg-gray-200">
-              <User className="h-5 w-5 text-gray-600" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-48 bg-white border-gray-200">
-            <DropdownMenuItem asChild className="cursor-pointer">
-              <Link href="/dashboard/profile" className="flex items-center">
-                <User className="h-4 w-4 mr-2" />
-                个人资料
-              </Link>
-            </DropdownMenuItem>
-            
-            {/* Show Admin link only for admin/staff */}
-            {(isAdmin || isStaff) && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild className="cursor-pointer">
-                  <Link href="/admin" className="flex items-center text-orange-600">
-                    <Shield className="h-4 w-4 mr-2" />
-                    管理后台
-                  </Link>
-                </DropdownMenuItem>
-              </>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {mounted ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="rounded-full bg-[#ececec] hover:bg-gray-200">
+                <User className="h-5 w-5 text-gray-600" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-48 bg-white border-gray-200">
+              <DropdownMenuItem asChild className="cursor-pointer">
+                <Link href="/dashboard/profile" className="flex items-center">
+                  <User className="h-4 w-4 mr-2" />
+                  Profile
+                </Link>
+              </DropdownMenuItem>
+
+              {/* Show Admin link only for admin/staff */}
+              {(isAdmin || isStaff) && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild className="cursor-pointer">
+                    <Link href="/admin" className="flex items-center text-orange-600">
+                      <Shield className="h-4 w-4 mr-2" />
+                      Admin
+                    </Link>
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : (
+          <Button variant="ghost" size="icon" className="rounded-full bg-[#ececec]">
+            <User className="h-5 w-5 text-gray-600" />
+          </Button>
+        )}
 
         {/* Center: Week Selector */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button 
-              variant="ghost" 
-              className="flex items-center gap-2 text-gray-800 hover:bg-gray-100 px-4 py-2 rounded-full"
-            >
-              <Calendar className="h-4 w-4 text-orange-500" />
-              <span className="font-medium">
-                {mounted ? currentWeek.label : 'Loading...'}
-              </span>
-              <ChevronDown className="h-4 w-4 text-gray-400" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent 
-            align="center" 
-            className="w-56 bg-white border-gray-200 shadow-lg"
-          >
-            {weekOptions.map((week, index) => (
-              <DropdownMenuItem
-                key={week.id}
-                onSelect={() => setCurrentWeekIndex(index)}
-                className={`cursor-pointer ${
-                  index === currentWeekIndex 
-                    ? 'bg-orange-50 text-orange-600' 
-                    : 'text-gray-700 hover:bg-gray-50'
-                }`}
+        {mounted ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                className="flex items-center gap-2 text-gray-800 hover:bg-gray-100 px-4 py-2 rounded-full"
               >
-                <Calendar className="h-4 w-4 mr-2" />
-                {week.label}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+                <Calendar className="h-4 w-4 text-orange-500" />
+                <span className="font-medium">{currentWeek.label}</span>
+                <ChevronDown className="h-4 w-4 text-gray-400" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="center"
+              className="w-56 bg-white border-gray-200 shadow-lg"
+            >
+              {weekOptions.map((week, index) => (
+                <DropdownMenuItem
+                  key={week.id}
+                  onSelect={() => setCurrentWeekIndex(index)}
+                  className={`cursor-pointer ${
+                    index === currentWeekIndex
+                      ? 'bg-orange-50 text-orange-600'
+                      : 'text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  <Calendar className="h-4 w-4 mr-2" />
+                  {week.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : (
+          <Button
+            variant="ghost"
+            className="flex items-center gap-2 text-gray-800 px-4 py-2 rounded-full"
+          >
+            <Calendar className="h-4 w-4 text-orange-500" />
+            <span className="font-medium">Loading...</span>
+            <ChevronDown className="h-4 w-4 text-gray-400" />
+          </Button>
+        )}
 
         {/* Right: Cart */}
         <Link href="/dashboard/cart">

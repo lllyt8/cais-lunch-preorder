@@ -19,11 +19,11 @@ import { format } from 'date-fns'
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
 const WEEKDAY_LABELS: Record<string, string> = {
-  'Mon': '周一',
-  'Tue': '周二',
-  'Wed': '周三',
-  'Thu': '周四',
-  'Fri': '周五',
+  'Mon': 'Mon',
+  'Tue': 'Tue',
+  'Wed': 'Wed',
+  'Thu': 'Thu',
+  'Fri': 'Fri',
 }
 
 export default function OrderPage() {
@@ -33,8 +33,8 @@ export default function OrderPage() {
   const [checkoutDialogOpen, setCheckoutDialogOpen] = useState(false)
   const [missingDays, setMissingDays] = useState<string[]>([])
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(['rice', 'noodles', 'dumplings', 'snacks']))
-  
-  const { getCurrentWeek } = useWeekSelector()
+
+  const { getCurrentWeek, checkAndResetIfNeeded } = useWeekSelector()
   const currentWeek = getCurrentWeek()
   
   const { 
@@ -83,7 +83,10 @@ export default function OrderPage() {
   }
 
   useEffect(() => {
+    // Check if we need to reset week due to date change
+    checkAndResetIfNeeded()
     fetchData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Get the actual date for the selected weekday in the current week
@@ -123,14 +126,14 @@ export default function OrderPage() {
 
   const handleAddToCart = (item: MenuItem, portionType: 'Full Order' | 'Half Order' = 'Full Order') => {
     if (!selectedChildId) {
-      toast.error('请先选择一个孩子')
+      toast.error('Please select a child first')
       return
     }
-    
+
     const price = portionType === 'Half Order' ? item.base_price - 2 : item.base_price
     const fullDateString = getFullDateString(selectedDate)
     addItem(selectedChildId, fullDateString, item, portionType, price)
-    toast.success(`已添加 ${item.name}`)
+    toast.success(`Added ${item.name} to cart`)
   }
 
   // Compute cart items dynamically based on current state
@@ -158,7 +161,7 @@ export default function OrderPage() {
 
   const proceedToCheckout = () => {
     setCheckoutDialogOpen(false)
-    toast.success('前往结算页面...')
+    toast.success('Proceeding to checkout...')
     // Navigate to checkout
   }
 
@@ -184,12 +187,16 @@ export default function OrderPage() {
       <div className="space-y-6 p-4">
         <Card className="bg-white border-gray-200 shadow-sm">
           <CardContent className="flex flex-col items-center justify-center py-12">
-            <span className="text-6xl mb-4">👶</span>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">请先添加孩子</h3>
-            <p className="text-gray-600 mb-4">您需要先添加孩子才能开始订餐</p>
+            <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mb-4">
+              <svg className="w-8 h-8 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+            </div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">Please Add a Child First</h3>
+            <p className="text-gray-600 mb-4">You need to add a child before you can start ordering</p>
             <Link href="/dashboard/children">
               <Button className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white">
-                去添加孩子
+                Add Child
               </Button>
             </Link>
           </CardContent>
@@ -202,7 +209,7 @@ export default function OrderPage() {
     <div className="space-y-4 p-4 pb-24">
       {/* Child Selector */}
       <div className="space-y-2">
-        <h2 className="text-sm font-medium text-gray-600">选择孩子</h2>
+        <h2 className="text-sm font-medium text-gray-600">Select Child</h2>
         <div className="flex gap-3 overflow-x-auto py-1 px-1 -mx-1 -my-1 scrollbar-hide">
           {children.map((child) => (
             <button
@@ -284,10 +291,10 @@ export default function OrderPage() {
                     </div>
                     <div className="flex-1 text-left">
                       <h2 className="text-xl font-bold text-gray-900">
-                        {category.nameCn}
+                        {category.nameEn}
                       </h2>
                       <p className="text-sm text-gray-500">
-                        {category.nameEn} · {items.length} 道菜品
+                        {items.length} items available
                       </p>
                     </div>
                     <ChevronDown 
@@ -325,12 +332,12 @@ export default function OrderPage() {
                 {children.find(c => c.id === selectedChildId)?.name} - {WEEKDAY_LABELS[selectedDate]} ({format(getDateForWeekday(selectedDate), 'M/d')})
               </p>
               <p className="text-gray-900 font-semibold text-lg">
-                {currentCartItems.length} 项商品 · <span className="text-orange-500">${currentCartTotal.toFixed(2)}</span>
+                {currentCartItems.length} items · <span className="text-orange-500">${currentCartTotal.toFixed(2)}</span>
               </p>
             </div>
             <div className="flex gap-2">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="border-gray-300 text-gray-700 hover:bg-gray-50"
                 onClick={() => {
                   if (selectedChildId) {
@@ -338,13 +345,13 @@ export default function OrderPage() {
                   }
                 }}
               >
-                清空
+                Clear
               </Button>
-              <Button 
+              <Button
                 onClick={checkMissingOrders}
                 className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white shadow-md"
               >
-                去结算
+                Checkout
               </Button>
             </div>
           </div>
@@ -387,14 +394,14 @@ export default function OrderPage() {
       <Dialog open={checkoutDialogOpen} onOpenChange={setCheckoutDialogOpen}>
         <DialogContent className="bg-white border-gray-200">
           <DialogHeader>
-            <DialogTitle className="text-gray-900">您是否忘了点餐？</DialogTitle>
+            <DialogTitle className="text-gray-900">Missing Orders</DialogTitle>
             <DialogDescription className="text-gray-600">
-              以下日期还没有为 {children.find(c => c.id === selectedChildId)?.name} 添加午餐：
+              The following days don't have lunch orders for {children.find(c => c.id === selectedChildId)?.name}:
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-wrap gap-2 py-4">
             {missingDays.map(day => (
-              <span 
+              <span
                 key={day}
                 className="px-3 py-1 bg-orange-500/20 text-orange-400 rounded-full text-sm"
               >
@@ -403,8 +410,8 @@ export default function OrderPage() {
             ))}
           </div>
           <DialogFooter className="flex gap-2">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => {
                 setCheckoutDialogOpen(false)
                 if (missingDays.length > 0) {
@@ -413,13 +420,13 @@ export default function OrderPage() {
               }}
               className="border-gray-300 text-gray-700 hover:bg-gray-50"
             >
-              返回补单
+              Go Back to Order
             </Button>
-            <Button 
+            <Button
               onClick={proceedToCheckout}
               className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white"
             >
-              继续结算
+              Continue to Checkout
             </Button>
           </DialogFooter>
         </DialogContent>

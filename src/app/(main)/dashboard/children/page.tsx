@@ -35,7 +35,7 @@ export default function ChildrenPage() {
       .order('created_at', { ascending: false })
 
     if (error) {
-      toast.error('获取孩子列表失败')
+      toast.error('Failed to fetch children')
     } else {
       setChildren(data || [])
     }
@@ -63,9 +63,9 @@ export default function ChildrenPage() {
         .eq('id', editingChild.id)
 
       if (error) {
-        toast.error('更新失败')
+        toast.error('Failed to update child')
       } else {
-        toast.success('更新成功')
+        toast.success('Child updated successfully')
         fetchChildren()
       }
     } else {
@@ -80,9 +80,9 @@ export default function ChildrenPage() {
         })
 
       if (error) {
-        toast.error('添加失败')
+        toast.error('Failed to add child')
       } else {
-        toast.success('添加成功')
+        toast.success('Child added successfully')
         fetchChildren()
       }
     }
@@ -103,7 +103,7 @@ export default function ChildrenPage() {
   }
 
   const handleDelete = async (childId: string) => {
-    if (!confirm('确定要删除这个孩子吗？')) return
+    if (!confirm('Are you sure you want to delete this child?')) return
 
     const { error } = await supabase
       .from('children')
@@ -111,9 +111,9 @@ export default function ChildrenPage() {
       .eq('id', childId)
 
     if (error) {
-      toast.error('删除失败')
+      toast.error('Failed to delete child')
     } else {
-      toast.success('删除成功')
+      toast.success('Child deleted successfully')
       fetchChildren()
     }
   }
@@ -143,52 +143,52 @@ export default function ChildrenPage() {
     <div className="space-y-6 p-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">孩子管理</h1>
-          <p className="text-gray-600">添加和管理您的孩子信息</p>
+          <h1 className="text-2xl font-bold text-gray-900">Manage Children</h1>
+          <p className="text-gray-600">Add and manage your children's information</p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button 
+            <Button
               onClick={openAddDialog}
               className="bg-orange-500 hover:bg-orange-600 text-white shadow-md"
             >
-              + 添加孩子
+              Add Child
             </Button>
           </DialogTrigger>
           <DialogContent className="bg-white border-gray-200">
             <form onSubmit={handleSubmit}>
               <DialogHeader>
                 <DialogTitle className="text-gray-900">
-                  {editingChild ? '编辑孩子信息' : '添加新孩子'}
+                  {editingChild ? 'Edit Child Information' : 'Add New Child'}
                 </DialogTitle>
                 <DialogDescription className="text-gray-600">
-                  {editingChild ? '更新孩子的基本信息' : '填写孩子的基本信息以开始订餐'}
+                  {editingChild ? 'Update your child\'s basic information' : 'Fill in your child\'s basic information to start ordering'}
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name" className="text-gray-700">姓名 *</Label>
+                  <Label htmlFor="name" className="text-gray-700">Name *</Label>
                   <Input
                     id="name"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="孩子的姓名"
+                    placeholder="Child's name"
                     required
                     className="bg-white border-gray-200 text-gray-900"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="class_info" className="text-gray-700">班级</Label>
+                  <Label htmlFor="class_info" className="text-gray-700">Class</Label>
                   <Input
                     id="class_info"
                     value={formData.class_info}
                     onChange={(e) => setFormData({ ...formData, class_info: e.target.value })}
-                    placeholder="例如: Grade 3, Class A"
+                    placeholder="e.g., Grade 3, Class A"
                     className="bg-white border-gray-200 text-gray-900"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="birthday" className="text-gray-700">生日</Label>
+                  <Label htmlFor="birthday" className="text-gray-700">Birthday</Label>
                   <Input
                     id="birthday"
                     type="date"
@@ -199,19 +199,19 @@ export default function ChildrenPage() {
                 </div>
               </div>
               <DialogFooter>
-                <Button 
-                  type="button" 
-                  variant="outline" 
+                <Button
+                  type="button"
+                  variant="outline"
                   onClick={() => setDialogOpen(false)}
                   className="border-gray-300 text-gray-700 hover:bg-gray-50"
                 >
-                  取消
+                  Cancel
                 </Button>
-                <Button 
+                <Button
                   type="submit"
                   className="bg-orange-500 hover:bg-orange-600 text-white"
                 >
-                  {editingChild ? '保存' : '添加'}
+                  {editingChild ? 'Save' : 'Add'}
                 </Button>
               </DialogFooter>
             </form>
@@ -226,14 +226,18 @@ export default function ChildrenPage() {
       ) : children.length === 0 ? (
         <Card className="bg-white border-gray-200 shadow-sm">
           <CardContent className="flex flex-col items-center justify-center py-12">
-            <span className="text-6xl mb-4">👶</span>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">还没有添加孩子</h3>
-            <p className="text-gray-600 mb-4">添加您的孩子以开始订餐</p>
-            <Button 
+            <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mb-4">
+              <svg className="w-8 h-8 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+            </div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">No children added yet</h3>
+            <p className="text-gray-600 mb-4">Add your children to start ordering meals</p>
+            <Button
               onClick={openAddDialog}
               className="bg-orange-500 hover:bg-orange-600 text-white"
             >
-              + 添加第一个孩子
+              Add Your First Child
             </Button>
           </CardContent>
         </Card>
@@ -255,25 +259,25 @@ export default function ChildrenPage() {
                       <p className="text-sm text-gray-600">{child.class_info}</p>
                     )}
                     {child.birthday && (
-                      <p className="text-sm text-gray-500">🎂 {child.birthday}</p>
+                      <p className="text-sm text-gray-500">Birthday: {child.birthday}</p>
                     )}
                   </div>
                   <div className="flex gap-2">
-                    <Button 
-                      size="sm" 
-                      variant="ghost" 
+                    <Button
+                      size="sm"
+                      variant="ghost"
                       onClick={() => handleEdit(child)}
                       className="text-gray-600 hover:text-gray-900 hover:bg-gray-100"
                     >
-                      编辑
+                      Edit
                     </Button>
-                    <Button 
-                      size="sm" 
-                      variant="ghost" 
+                    <Button
+                      size="sm"
+                      variant="ghost"
                       onClick={() => handleDelete(child.id)}
                       className="text-red-500 hover:text-red-600 hover:bg-red-50"
                     >
-                      删除
+                      Delete
                     </Button>
                   </div>
                 </CardContent>
@@ -286,10 +290,10 @@ export default function ChildrenPage() {
             <Table>
               <TableHeader>
                 <TableRow className="border-gray-200 hover:bg-gray-50">
-                  <TableHead className="text-gray-700 font-semibold">孩子</TableHead>
-                  <TableHead className="text-gray-700 font-semibold">班级</TableHead>
-                  <TableHead className="text-gray-700 font-semibold">生日</TableHead>
-                  <TableHead className="text-gray-700 font-semibold text-right">操作</TableHead>
+                  <TableHead className="text-gray-700 font-semibold">Child</TableHead>
+                  <TableHead className="text-gray-700 font-semibold">Class</TableHead>
+                  <TableHead className="text-gray-700 font-semibold">Birthday</TableHead>
+                  <TableHead className="text-gray-700 font-semibold text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -308,21 +312,21 @@ export default function ChildrenPage() {
                     <TableCell className="text-gray-700">{child.class_info || '-'}</TableCell>
                     <TableCell className="text-gray-700">{child.birthday || '-'}</TableCell>
                     <TableCell className="text-right">
-                      <Button 
-                        size="sm" 
-                        variant="ghost" 
+                      <Button
+                        size="sm"
+                        variant="ghost"
                         onClick={() => handleEdit(child)}
                         className="text-gray-600 hover:text-gray-900 hover:bg-gray-100"
                       >
-                        编辑
+                        Edit
                       </Button>
-                      <Button 
-                        size="sm" 
-                        variant="ghost" 
+                      <Button
+                        size="sm"
+                        variant="ghost"
                         onClick={() => handleDelete(child.id)}
                         className="text-red-500 hover:text-red-600 hover:bg-red-50"
                       >
-                        删除
+                        Delete
                       </Button>
                     </TableCell>
                   </TableRow>

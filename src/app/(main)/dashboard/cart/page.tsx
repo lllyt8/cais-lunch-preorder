@@ -17,11 +17,11 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import { toast } from 'sonner'
 
 const WEEKDAY_LABELS: Record<string, string> = {
-  'Mon': '周一',
-  'Tue': '周二',
-  'Wed': '周三',
-  'Thu': '周四',
-  'Fri': '周五',
+  'Mon': 'Mon',
+  'Tue': 'Tue',
+  'Wed': 'Wed',
+  'Thu': 'Thu',
+  'Fri': 'Fri',
 }
 
 // Helper to format date string for display
@@ -35,11 +35,11 @@ const formatDateDisplay = (dateStr: string): string => {
     const dayOfWeek = format(date, 'EEEE')
     const shortDate = format(date, 'M/d')
     const weekdayMap: Record<string, string> = {
-      'Monday': '周一',
-      'Tuesday': '周二',
-      'Wednesday': '周三',
-      'Thursday': '周四',
-      'Friday': '周五',
+      'Monday': 'Mon',
+      'Tuesday': 'Tue',
+      'Wednesday': 'Wed',
+      'Thursday': 'Thu',
+      'Friday': 'Fri',
     }
     return `${weekdayMap[dayOfWeek] || dayOfWeek} (${shortDate})`
   } catch {

@@ -66,7 +66,7 @@ export function MenuItemCard({ item, onAdd }: MenuItemCardProps) {
         {item.has_tofu_option && (
           <div className="absolute top-2 right-2">
             <span className="text-xs bg-green-500 text-white px-2 py-1 rounded-full font-medium shadow-sm">
-              素食可选
+              Vegetarian Option
             </span>
           </div>
         )}
@@ -145,7 +145,7 @@ export function MenuItemCard({ item, onAdd }: MenuItemCardProps) {
             onClick={() => onAdd(item, supportsHalfOrder ? selectedPortion : 'Full Order')}
             className="bg-orange-500 hover:bg-orange-600 active:scale-95 text-white font-medium shadow-sm hover:shadow-md transition-all duration-200"
           >
-            + 添加
+            Add
           </Button>
         </div>
       </CardContent>

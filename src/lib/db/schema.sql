@@ -5,9 +5,8 @@
 CREATE TABLE users (
     id UUID REFERENCES auth.users NOT NULL PRIMARY KEY,
     email TEXT UNIQUE NOT NULL,
-    phone_number TEXT,
-    stripe_customer_id TEXT,
-    account_balance NUMERIC DEFAULT 0.00
+    name TEXT,
+    phone_number TEXT
 );
 
 -- 2. 孩子表 (Children): 关联到家长

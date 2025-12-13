@@ -1,9 +1,8 @@
 export interface User {
   id: string;
   email: string;
+  name?: string;
   phone_number?: string;
-  stripe_customer_id?: string;
-  account_balance: number;
 }
 
 export interface Child {
@@ -76,7 +75,7 @@ export interface Database {
     Tables: {
       users: {
         Row: User;
-        Insert: Omit<User, "account_balance"> & { account_balance?: number };
+        Insert: Omit<User, "id">;
         Update: Partial<User>;
       };
       children: {

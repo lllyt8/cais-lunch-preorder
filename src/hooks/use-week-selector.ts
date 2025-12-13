@@ -9,6 +9,7 @@ import {
   format,
   eachDayOfInterval,
   isWeekend,
+  startOfDay,
 } from "date-fns";
 
 export interface WeekOption {
@@ -22,9 +23,11 @@ export interface WeekOption {
 
 interface WeekSelectorState {
   currentWeekIndex: number;
+  lastGeneratedDate: string; // Store the date when weeks were last generated
   setCurrentWeekIndex: (index: number) => void;
   getWeekOptions: () => WeekOption[];
   getCurrentWeek: () => WeekOption;
+  checkAndResetIfNeeded: () => void;
 }
 
 // Generate week options (next week + following 3 weeks)
@@ -64,15 +67,33 @@ function generateWeekOptions(): WeekOption[] {
   return options;
 }
 
+// Get today's date as a string (YYYY-MM-DD) for comparison
+function getTodayString(): string {
+  return format(startOfDay(new Date()), 'yyyy-MM-dd');
+}
+
 export const useWeekSelector = create<WeekSelectorState>()(
   persist(
     (set, get) => ({
       currentWeekIndex: 0,
+      lastGeneratedDate: getTodayString(),
       setCurrentWeekIndex: (index) => set({ currentWeekIndex: index }),
       getWeekOptions: generateWeekOptions,
       getCurrentWeek: () => {
         const options = generateWeekOptions();
         return options[get().currentWeekIndex] || options[0];
+      },
+      checkAndResetIfNeeded: () => {
+        const today = getTodayString();
+        const lastGenerated = get().lastGeneratedDate;
+
+        // If the date has changed since last generation, reset to week 0
+        if (today !== lastGenerated) {
+          set({
+            currentWeekIndex: 0,
+            lastGeneratedDate: today
+          });
+        }
       },
     }),
     {

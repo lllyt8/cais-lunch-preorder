@@ -74,30 +74,6 @@ export async function POST(request: Request) {
             }
           }
         }
-        // 处理余额充值
-        else if (session.metadata?.type === "balance_topup") {
-          const userId = session.metadata.user_id;
-          const amount = parseFloat(session.metadata.amount);
-
-          // Add balance to user account
-          const { data: user } = await supabase
-            .from("users")
-            .select("account_balance")
-            .eq("id", userId)
-            .single();
-
-          const currentBalance = user?.account_balance || 0;
-          const newBalance = currentBalance + amount;
-
-          await supabase
-            .from("users")
-            .update({ account_balance: newBalance })
-            .eq("id", userId);
-
-          console.log(
-            `Balance updated for user ${userId}: $${currentBalance} -> $${newBalance}`
-          );
-        }
         break;
       }
 
