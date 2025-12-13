@@ -75,3 +75,4 @@ export function HomeCarousel() {
     </div>
   )
 }
+ 

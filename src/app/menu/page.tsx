@@ -70,7 +70,7 @@ export default function PublicMenuPage() {
       <div className="container mx-auto px-4 py-12">
         <div className="text-center mb-12">
           <h2 className="text-4xl font-bold text-gray-900 mb-4">
-            本周精选菜单
+            Our Weekly Menu
           </h2>
           <p className="text-xl text-gray-600">
             新鲜食材，营养搭配，每天都有新惊喜
