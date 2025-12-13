@@ -1,7 +1,15 @@
-import { type NextRequest } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 
 export async function middleware(request: NextRequest) {
+  // Allow public access to landing page and menu
+  if (
+    request.nextUrl.pathname === "/" ||
+    request.nextUrl.pathname === "/menu"
+  ) {
+    return NextResponse.next();
+  }
+
   return await updateSession(request);
 }
 
@@ -12,11 +20,11 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
-     * - public folder
-     * - / (landing page)
-     * - /menu (public menu page)
-     * - /login, /register (auth pages)
+     * - public folder (images)
+     * - / (landing page - excluded)
+     * - /menu (public menu page - excluded)
+     * - /login, /register (auth pages - excluded)
      */
-    "/((?!_next/static|_next/image|favicon.ico|^$|menu|login|register|api|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|menu|login|register|api|mcot_pic|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
