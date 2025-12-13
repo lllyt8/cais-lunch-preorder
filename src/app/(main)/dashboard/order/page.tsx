@@ -215,18 +215,18 @@ export default function OrderPage() {
             <button
               key={child.id}
               onClick={() => setSelectedChild(child.id)}
-              className={`flex flex-col items-center gap-2 p-3 rounded-xl transition-all min-w-[80px] shadow-sm ${
+              className={`flex flex-col items-center gap-1.5 p-3 rounded-xl transition-all transform scale-90 md:scale-100 min-w-[80px] shadow-sm ${
                 selectedChildId === child.id
                   ? 'bg-orange-50 ring-2 ring-orange-400 border border-orange-200'
                   : 'bg-white hover:bg-gray-50 border border-gray-200'
               }`}
             >
-              <Avatar className="h-12 w-12">
+              <Avatar className="h-10 w-10">
                 <AvatarFallback className={`${getAvatarColor(child.name)} text-white`}>
                   {getInitials(child.name)}
                 </AvatarFallback>
               </Avatar>
-              <span className={`text-sm font-medium ${
+              <span className={`text-xs md:text-sm font-medium ${
                 selectedChildId === child.id ? 'text-orange-600' : 'text-gray-700'
               }`}>
                 {child.name}
@@ -238,7 +238,7 @@ export default function OrderPage() {
 
       {/* Weekly Tabs */}
       <Tabs value={selectedDate} onValueChange={setSelectedDate} className="w-full">
-        <TabsList className="grid w-full grid-cols-5 bg-gray-100 border border-gray-200">
+        <TabsList className="grid w-full grid-cols-5 h-auto bg-gray-100 border border-gray-200">
           {WEEKDAYS.map((day) => {
             const fullDate = getFullDateString(day)
             const hasItems = selectedChildId && getCartItems(selectedChildId, fullDate).length > 0
@@ -247,7 +247,7 @@ export default function OrderPage() {
               <TabsTrigger 
                 key={day} 
                 value={day}
-                className="relative data-[state=active]:bg-orange-400 data-[state=active]:text-white font-medium"
+                className="relative py-2 data-[state=active]:bg-orange-400 data-[state=active]:text-white font-medium"
               >
                 <div className="flex flex-col items-center">
                   <span>{WEEKDAY_LABELS[day]}</span>
@@ -286,7 +286,7 @@ export default function OrderPage() {
                     className="w-full flex items-center gap-3 pb-2 border-b-2 border-orange-100 hover:border-orange-300 transition-colors group"
                   >
                     {/* Icon with gradient background */}
-                    <div className={`relative w-12 h-12 rounded-xl bg-linear-to-br ${category.gradient} flex items-center justify-center shadow-sm group-hover:shadow-md transition-all duration-300 group-hover:scale-105`}>
+                    <div className={`relative w-12 h-12 rounded-xl bg-gradient-to-br ${category.gradient} flex items-center justify-center shadow-sm group-hover:shadow-md transition-all duration-300 group-hover:scale-105`}>
                       <category.icon className="w-6 h-6 text-white" strokeWidth={2.5} />
                     </div>
                     <div className="flex-1 text-left">
