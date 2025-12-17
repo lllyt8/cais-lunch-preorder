@@ -16,6 +16,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "My Cup Of Tea - School Lunch Delivery",
   description: "Fresh, nutritious school lunches delivered daily since 2017",
+  icons: {
+    icon: "/mcot_pic/teacup.png",
+  },
 };
 
 export default function RootLayout({
