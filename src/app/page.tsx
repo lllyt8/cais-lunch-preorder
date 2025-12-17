@@ -228,7 +228,7 @@ export default function LandingPage() {
               </Button>
             </Link>
             <Link href="/login">
-              <Button size="lg" variant="outline" className="border-2 border-white text-white hover:bg-white/10 text-lg px-10 py-6 rounded-full font-bold">
+              <Button size="lg" variant="outline" className="border-2 border-white bg-orange-500 hover:bg-white/10 text-lg px-10 py-6 rounded-full font-bold">
                 Sign Up Now
               </Button>
             </Link>
