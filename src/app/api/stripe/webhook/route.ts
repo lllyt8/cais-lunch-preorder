@@ -26,52 +26,47 @@ export async function POST(request: Request) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
 
-        // 处理订单支付 - 支付成功后创建订单
-        if (session.metadata?.orders_data) {
-          const userId = session.metadata.user_id;
-          const ordersData = JSON.parse(session.metadata.orders_data);
+        // 处理订单支付 - 支付成功后更新订单状态
+        if (session.metadata?.order_ids) {
+          const orderIds = session.metadata.order_ids.split(",");
 
-          // 为每个订单创建数据库记录
-          for (const orderData of ordersData) {
-            // 创建订单
-            const { data: order, error: orderError } = await supabase
-              .from("orders")
-              .insert({
-                parent_id: userId,
-                child_id: orderData.childId,
-                order_date: orderData.date,
-                total_amount: orderData.total,
-                status: "paid", // 直接标记为已支付
-                fulfillment_status: "pending_delivery",
-                stripe_payment_intent_id: session.payment_intent as string,
-                special_requests: orderData.specialRequests,
-              })
-              .select()
-              .single();
+          // 更新所有订单状态为已支付（注意：数据库中没有 payment_status 字段）
+          const { error: updateError } = await supabase
+            .from("orders")
+            .update({
+              status: "confirmed",
+              fulfillment_status: "pending_delivery",
+              stripe_payment_intent_id: session.payment_intent as string,
+            })
+            .in("id", orderIds);
 
-            if (orderError) {
-              console.error("Error creating order:", orderError);
-              continue;
-            }
+          if (updateError) {
+            console.error("Error updating orders:", updateError);
+          } else {
+            console.log(`Orders ${orderIds.join(", ")} marked as paid`);
+          }
+        }
+        break;
+      }
 
-            // 创建订单详情
-            const orderDetails = orderData.items.map((item: any) => ({
-              order_id: order.id,
-              menu_item_id: item.menu_item_id,
-              quantity: item.quantity,
-              unit_price: item.unit_price,
-              portion: item.portion,
-            }));
+      case "checkout.session.expired": {
+        const session = event.data.object as Stripe.Checkout.Session;
 
-            const { error: detailsError } = await supabase
-              .from("order_details")
-              .insert(orderDetails);
+        // 取消过期的待支付订单
+        if (session.metadata?.order_ids) {
+          const orderIds = session.metadata.order_ids.split(",");
 
-            if (detailsError) {
-              console.error("Error creating order details:", detailsError);
-            } else {
-              console.log(`Order ${order.id} created and marked as paid`);
-            }
+          const { error: cancelError } = await supabase
+            .from("orders")
+            .update({
+              status: "cancelled",
+            })
+            .in("id", orderIds);
+
+          if (cancelError) {
+            console.error("Error cancelling orders:", cancelError);
+          } else {
+            console.log(`Orders ${orderIds.join(", ")} cancelled due to session expiry`);
           }
         }
         break;

@@ -336,25 +336,12 @@ export default function OrderPage() {
                 {currentCartItems.length} items · <span className="text-orange-500">${currentCartTotal.toFixed(2)}</span>
               </p>
             </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                className="border-gray-300 text-gray-700 hover:bg-gray-50"
-                onClick={() => {
-                  if (selectedChildId) {
-                    currentCartItems.forEach(item => removeItem(selectedChildId, fullDateString, item.menu_item.id, item.portion_type))
-                  }
-                }}
-              >
-                Clear
-              </Button>
-              <Button
-                onClick={checkMissingOrders}
-                className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white shadow-md"
-              >
-                Review Order
-              </Button>
-            </div>
+            <Button
+              onClick={checkMissingOrders}
+              className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white shadow-md"
+            >
+              Review Order
+            </Button>
           </div>
           
           {/* Cart Items Preview */}

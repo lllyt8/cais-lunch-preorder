@@ -29,6 +29,50 @@ export async function POST(request: Request) {
       );
     }
 
+    // 先创建待支付订单记录到数据库
+    const pendingOrderIds: string[] = [];
+
+    for (const order of ordersData) {
+      // 创建订单记录（状态为 pending_payment）
+      const { data: orderRecord, error: orderError } = await supabase
+        .from("orders")
+        .insert({
+          parent_id: user.id,
+          child_id: order.childId,
+          order_date: order.date,
+          total_amount: order.total,
+          status: "pending_payment", // 等待支付
+          fulfillment_status: "pending_delivery",
+        })
+        .select()
+        .single();
+
+      if (orderError || !orderRecord) {
+        console.error("Error creating order:", orderError);
+        throw new Error("Failed to create order record");
+      }
+
+      // 创建订单项（注意：表名是 order_details，字段是 unit_price_at_time_of_order）
+      const orderItems = order.items.map((item: any) => ({
+        order_id: orderRecord.id,
+        menu_item_id: item.menu_item_id,
+        quantity: item.quantity,
+        unit_price_at_time_of_order: item.unit_price,
+        portion_type: item.portion,
+      }));
+
+      const { error: itemsError } = await supabase
+        .from("order_details")
+        .insert(orderItems);
+
+      if (itemsError) {
+        console.error("Error creating order items:", itemsError);
+        throw new Error("Failed to create order items");
+      }
+
+      pendingOrderIds.push(orderRecord.id);
+    }
+
     // 创建 line items（基于购物车数据）
     const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] =
       ordersData.map((order: any) => ({
@@ -56,7 +100,7 @@ export async function POST(request: Request) {
         cancelUrl || `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/cart`,
       metadata: {
         user_id: user.id,
-        orders_data: JSON.stringify(ordersData), // 保存订单数据，支付成功后创建订单
+        order_ids: pendingOrderIds.join(","), // 只保存订单ID列表，避免超过500字符限制
       },
       customer_email: user.email,
       ui_mode: "hosted",

@@ -325,7 +325,8 @@ export default function CartPage() {
       if (checkoutData.url) {
         // 显示跳转提示
         toast.success('Redirecting to secure payment...', { duration: 2000 })
-        window.location.href = checkoutData.url
+        // 使用 replace 而不是 href，避免在浏览器历史中添加记录
+        window.location.replace(checkoutData.url)
       }
       
     } catch (error: unknown) {
@@ -360,7 +361,7 @@ export default function CartPage() {
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => router.back()}
+          onClick={() => router.push('/dashboard/order')}
           className="text-gray-700 hover:bg-gray-100"
         >
           <ArrowLeft className="h-5 w-5" />
