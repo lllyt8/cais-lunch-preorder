@@ -34,6 +34,7 @@ interface CartState {
   ) => void;
   clearCart: (childId: string, date: string) => void;
   clearAllCarts: () => void;
+  clearExpiredItems: () => string[]; // Returns array of cleared keys
 
   getCartItems: (childId: string, date: string) => CartItem[];
   getCartTotal: (childId: string, date: string) => number;
@@ -148,6 +149,44 @@ export const useCart = create<CartState>()(
       },
 
       clearAllCarts: () => set({ items: {} }),
+
+      clearExpiredItems: () => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const todayStr = today.toISOString().split("T")[0]; // YYYY-MM-DD
+
+        const currentItems = get().items;
+        const clearedKeys: string[] = [];
+        const newItems: Record<string, CartItem[]> = {};
+
+        for (const [key, cartItems] of Object.entries(currentItems)) {
+          // Extract date from key (format: ${childId}-${date})
+          let dateStr: string;
+
+          // Try to find ISO date format (YYYY-MM-DD) at the end
+          const possibleDateStart = key.length - 10;
+          if (
+            key[possibleDateStart - 1] === "-" &&
+            key.substring(possibleDateStart).match(/^\d{4}-\d{2}-\d{2}$/)
+          ) {
+            dateStr = key.substring(possibleDateStart);
+          } else {
+            // Legacy format or invalid - keep it
+            newItems[key] = cartItems;
+            continue;
+          }
+
+          // Check if date is expired
+          if (dateStr < todayStr) {
+            clearedKeys.push(key);
+          } else {
+            newItems[key] = cartItems;
+          }
+        }
+
+        set({ items: newItems });
+        return clearedKeys;
+      },
 
       getCartItems: (childId, date) => {
         const key = `${childId}-${date}`;

@@ -5,9 +5,7 @@ import { useChildren } from '@/hooks/use-children'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Textarea } from '@/components/ui/textarea'
-import { Label } from '@/components/ui/label'
-import { Minus, Plus, Trash2, ShoppingBag, ArrowLeft, ChevronDown, ChevronUp, Calendar, User } from 'lucide-react'
+import { Minus, Plus, Trash2, ShoppingBag, ArrowLeft, ChevronDown, ChevronUp, Calendar, User, AlertTriangle } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { formatCurrency } from '@/lib/stripe'
@@ -48,14 +46,13 @@ const formatDateDisplay = (dateStr: string): string => {
 }
 
 export default function CartPage() {
-  const { items, updateQuantity, removeItem, getTotalItemCount, clearAllCarts } = useCart()
+  const { items, updateQuantity, removeItem, getTotalItemCount, clearAllCarts, clearExpiredItems } = useCart()
   const { data: children, isLoading: childrenLoading } = useChildren()
   const router = useRouter()
   const [expandedWeeks, setExpandedWeeks] = useState<Set<string>>(new Set())
   const [expandedChildren, setExpandedChildren] = useState<Set<string>>(new Set())
   const hasInitialized = useRef(false)
   const [showCheckoutDialog, setShowCheckoutDialog] = useState(false)
-  const [specialRequests, setSpecialRequests] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const totalItemCount = getTotalItemCount()
@@ -82,11 +79,14 @@ export default function CartPage() {
     endDate: Date
     children: ChildGroup[]
     total: number
+    isExpired: boolean
   }
 
   const weekGroups = useMemo(() => {
     const groups: WeekGroup[] = []
-    
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
     Object.entries(items).forEach(([key, cartItems]) => {
     if (cartItems.length === 0) return
     
@@ -115,13 +115,17 @@ export default function CartPage() {
     // Find or create week group
     let weekGroup = groups.find(w => w.weekKey === weekKey)
     if (!weekGroup) {
+      // Check if week is expired (end date has passed)
+      const isExpired = weekEnd < today
+
       weekGroup = {
         weekKey,
         weekLabel,
         startDate: weekStart,
         endDate: weekEnd,
         children: [],
-        total: 0
+        total: 0,
+        isExpired
       }
       groups.push(weekGroup)
     }
@@ -163,7 +167,12 @@ export default function CartPage() {
     
     return groups
   }, [items, children])
-  
+
+  // Check if there are any expired weeks
+  const hasExpiredItems = useMemo(() => {
+    return weekGroups.some(week => week.isExpired)
+  }, [weekGroups])
+
   // Auto-expand first week on initial load
   useEffect(() => {
     if (!hasInitialized.current && weekGroups.length > 0) {
@@ -224,8 +233,22 @@ export default function CartPage() {
     setExpandedChildren(newExpanded)
   }
 
+  // Handle clearing expired items
+  const handleClearExpired = () => {
+    const clearedKeys = clearExpiredItems()
+    if (clearedKeys.length > 0) {
+      toast.success(`Removed ${clearedKeys.length} expired order(s) from your cart`)
+    }
+  }
+
   // 处理订单提交
   const handleCheckout = async () => {
+    // Check for expired items before checkout
+    if (hasExpiredItems) {
+      toast.error('Your cart contains expired orders. Please remove them before checkout.')
+      return
+    }
+
     setIsSubmitting(true)
     
     try {
@@ -271,8 +294,7 @@ export default function CartPage() {
             unit_price: item.unit_price,
             portion: item.portion_type || 'Full Order'
           })),
-          total: orderBreakdown.total,
-          specialRequests: specialRequests.trim() || null
+          total: orderBreakdown.total
         })
       }
       
@@ -335,9 +357,9 @@ export default function CartPage() {
     <div className="px-4 py-4 pb-32">
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
-        <Button 
-          variant="ghost" 
-          size="icon" 
+        <Button
+          variant="ghost"
+          size="icon"
           onClick={() => router.back()}
           className="text-gray-700 hover:bg-gray-100"
         >
@@ -349,26 +371,69 @@ export default function CartPage() {
         </div>
       </div>
 
+      {/* Expired Items Warning Banner */}
+      {hasExpiredItems && (
+        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <h3 className="font-semibold text-red-900 mb-1">Expired Items Detected</h3>
+              <p className="text-red-700 text-sm mb-3">
+                Your cart contains orders for dates that have already passed.
+                Please remove them before checkout.
+              </p>
+              <Button
+                onClick={handleClearExpired}
+                variant="outline"
+                size="sm"
+                className="border-red-300 text-red-700 hover:bg-red-100"
+              >
+                Remove Expired Items
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Cart Items Grouped by Week -> Child -> Date */}
       <div className="space-y-4">
         {weekGroups.map((week) => (
-          <Card key={week.weekKey} className="bg-white border-gray-200 shadow-sm">
+          <Card key={week.weekKey} className={`border-gray-200 shadow-sm ${week.isExpired ? 'bg-red-50 border-red-200' : 'bg-white'}`}>
             {/* Week Header */}
             <button
               onClick={() => toggleWeek(week.weekKey)}
-              className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+              className={`w-full p-4 flex items-center justify-between transition-colors ${
+                week.isExpired ? 'hover:bg-red-100' : 'hover:bg-gray-50'
+              }`}
             >
               <div className="flex items-center gap-3">
-                <Calendar className="h-5 w-5 text-orange-500" />
+                {week.isExpired ? (
+                  <AlertTriangle className="h-5 w-5 text-red-600" />
+                ) : (
+                  <Calendar className="h-5 w-5 text-orange-500" />
+                )}
                 <div className="text-left">
-                  <p className="text-gray-900 font-semibold">{week.weekLabel}</p>
-                  <p className="text-gray-600 text-sm">{week.children.length} {week.children.length === 1 ? 'child' : 'children'}</p>
+                  <div className="flex items-center gap-2">
+                    <p className={`font-semibold ${week.isExpired ? 'text-red-900' : 'text-gray-900'}`}>
+                      {week.weekLabel}
+                    </p>
+                    {week.isExpired && (
+                      <span className="px-2 py-0.5 bg-red-200 text-red-800 text-xs font-medium rounded">
+                        EXPIRED
+                      </span>
+                    )}
+                  </div>
+                  <p className={`text-sm ${week.isExpired ? 'text-red-700' : 'text-gray-600'}`}>
+                    {week.children.length} {week.children.length === 1 ? 'child' : 'children'}
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <p className="text-orange-500 font-bold text-lg">{formatCurrency(week.total)}</p>
-                {expandedWeeks.has(week.weekKey) ? 
-                  <ChevronUp className="h-5 w-5 text-gray-400" /> : 
+                <p className={`font-bold text-lg ${week.isExpired ? 'text-red-600' : 'text-orange-500'}`}>
+                  {formatCurrency(week.total)}
+                </p>
+                {expandedWeeks.has(week.weekKey) ?
+                  <ChevronUp className="h-5 w-5 text-gray-400" /> :
                   <ChevronDown className="h-5 w-5 text-gray-400" />
                 }
               </div>
@@ -502,11 +567,12 @@ export default function CartPage() {
             </span>
           </div>
         </div>
-        <Button 
+        <Button
           onClick={() => setShowCheckoutDialog(true)}
-          className="w-full bg-orange-500 hover:bg-orange-600 text-white h-12 text-lg font-semibold shadow-md"
+          disabled={hasExpiredItems}
+          className="w-full bg-orange-500 hover:bg-orange-600 text-white h-12 text-lg font-semibold shadow-md disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
-          Checkout
+          {hasExpiredItems ? 'Remove Expired Items First' : 'Checkout'}
         </Button>
       </div>
 
@@ -548,30 +614,6 @@ export default function CartPage() {
               </div>
             </div>
 
-            {/* Special Requests */}
-            <div className="space-y-2">
-              <Label htmlFor="special-requests" className="text-gray-900">
-                Special Requests (Optional)
-              </Label>
-              <Textarea
-                id="special-requests"
-                value={specialRequests}
-                onChange={(e) => setSpecialRequests(e.target.value)}
-                placeholder="Any special instructions or dietary notes..."
-                rows={3}
-                className="bg-white border-gray-300 text-gray-900"
-              />
-            </div>
-
-            {/* Payment Note */}
-            <div className="bg-green-50 border border-green-200 rounded-lg p-3 space-y-1">
-              <p className="text-sm text-green-800">
-                💳 <strong>Secure Payment:</strong> You&apos;ll be redirected to Stripe to complete your payment securely.
-              </p>
-              <p className="text-xs text-green-700">
-                💡 If you cancel the payment, your cart will be preserved and you can try again later.
-              </p>
-            </div>
           </div>
 
           <DialogFooter>

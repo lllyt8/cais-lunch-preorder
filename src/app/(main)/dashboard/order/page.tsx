@@ -15,6 +15,7 @@ import type { Child, MenuItem } from '@/types/database'
 import { MENU_CATEGORIES } from '@/constants/menu-categories'
 import { MenuItemCard } from '@/components/order/MenuItemCard'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
@@ -34,13 +35,14 @@ export default function OrderPage() {
   const [missingDays, setMissingDays] = useState<string[]>([])
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(['rice', 'noodles', 'dumplings', 'snacks']))
 
+  const router = useRouter()
   const { getCurrentWeek, checkAndResetIfNeeded } = useWeekSelector()
   const currentWeek = getCurrentWeek()
-  
-  const { 
-    selectedChildId, 
-    selectedDate, 
-    setSelectedChild, 
+
+  const {
+    selectedChildId,
+    selectedDate,
+    setSelectedChild,
     setSelectedDate,
     addItem,
     getCartItems,
@@ -155,14 +157,13 @@ export default function OrderPage() {
       setMissingDays(missing)
       setCheckoutDialogOpen(true)
     } else {
-      proceedToCheckout()
+      proceedToCart()
     }
   }
 
-  const proceedToCheckout = () => {
+  const proceedToCart = () => {
     setCheckoutDialogOpen(false)
-    toast.success('Proceeding to checkout...')
-    // Navigate to checkout
+    router.push('/dashboard/cart')
   }
 
   // Group menu items by the 4 main categories for the currently selected date
@@ -351,7 +352,7 @@ export default function OrderPage() {
                 onClick={checkMissingOrders}
                 className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white shadow-md"
               >
-                Checkout
+                Review Order
               </Button>
             </div>
           </div>
@@ -423,7 +424,7 @@ export default function OrderPage() {
               Go Back to Order
             </Button>
             <Button
-              onClick={proceedToCheckout}
+              onClick={proceedToCart}
               className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white"
             >
               Continue to Checkout
