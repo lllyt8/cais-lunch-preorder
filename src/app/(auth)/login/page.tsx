@@ -116,14 +116,16 @@ export default function LoginPage() {
 
         <Card className="border-gray-200 bg-white/90 backdrop-blur-md shadow-2xl">
           <Tabs defaultValue="login" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 bg-gray-100">
-              <TabsTrigger value="login" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                Sign In
-              </TabsTrigger>
-              <TabsTrigger value="register" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                Sign Up
-              </TabsTrigger>
-            </TabsList>
+            <div className="flex justify-center p-2">
+              <TabsList className="grid grid-cols-2 bg-gray-100 w-80">
+                <TabsTrigger value="login" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                  Sign In
+                </TabsTrigger>
+                <TabsTrigger value="register" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                  Sign Up
+                </TabsTrigger>
+              </TabsList>
+            </div>
 
             <TabsContent value="login">
               <form onSubmit={handleLogin}>
@@ -203,7 +205,7 @@ export default function LoginPage() {
                     </div>
                   )}
                 </CardContent>
-                <CardFooter>
+                <CardFooter className="pt-6">
                   <Button
                     type="submit"
                     className="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white shadow-lg"
@@ -299,7 +301,7 @@ export default function LoginPage() {
                     </div>
                   )}
                 </CardContent>
-                <CardFooter>
+                <CardFooter className="pt-6">
                   <Button
                     type="submit"
                     className="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white shadow-lg"
