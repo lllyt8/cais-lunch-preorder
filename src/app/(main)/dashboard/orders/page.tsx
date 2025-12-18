@@ -215,12 +215,11 @@ export default function OrdersPage() {
           // Add each item to cart
           for (const detail of order.order_details) {
             if (detail.menu_items) {
-              const portionType = detail.portion_type === 'half' ? 'Half Order' : 'Full Order'
               addItem(
                 order.child_id,
                 targetDate,
                 detail.menu_items,
-                portionType as 'Full Order' | 'Half Order',
+                detail.portion_type,
                 detail.unit_price_at_time_of_order || detail.menu_items.base_price
               )
               itemsAdded++
