@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useCart } from "@/hooks/use-cart";
 import { useWeekSelector } from "@/hooks/use-week-selector";
 import { toast } from "sonner";
-import { format } from "date-fns";
+import { format, parseISO, startOfWeek, addDays } from "date-fns";
 import type { MenuItem } from "@/types/database";
 
 interface LastOrderItem {
@@ -16,7 +16,7 @@ interface LastOrderItem {
   menu_items: MenuItem;
 }
 
-interface LastOrder {
+interface LastWeekOrder {
   id: string;
   child_id: string;
   order_date: string;
@@ -29,19 +29,21 @@ interface LastOrder {
 
 export function useReorder() {
   const [loading, setLoading] = useState(false);
-  const [lastOrder, setLastOrder] = useState<LastOrder | null>(null);
+  const [lastWeekOrders, setLastWeekOrders] = useState<LastWeekOrder[]>([]);
   const supabase = createClient();
-  const { addItem, setSelectedChild, setSelectedDate } = useCart();
+  const { addItem } = useCart();
   const { getCurrentWeek } = useWeekSelector();
 
-  const fetchLastOrder = async () => {
+  // Fetch last week's paid orders
+  const fetchLastWeekOrders = async () => {
     setLoading(true);
     try {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user) return null;
+      if (!user) return [];
 
+      // Get all paid orders, ordered by date descending
       const { data, error } = await supabase
         .from("orders")
         .select(
@@ -61,76 +63,107 @@ export function useReorder() {
         )
         .eq("parent_id", user.id)
         .eq("status", "paid")
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle(); // Use maybeSingle() instead of single() to handle no results gracefully
+        .order("order_date", { ascending: false })
+        .limit(20); // Get recent orders
 
       if (error) throw error;
 
-      if (!data) {
-        // No previous orders - this is normal for new users
-        setLastOrder(null);
-        return null;
+      if (!data || data.length === 0) {
+        setLastWeekOrders([]);
+        return [];
       }
 
-      setLastOrder(data as unknown as LastOrder);
-      return data as unknown as LastOrder;
+      // Group by week and get the most recent full week
+      const ordersByWeek = new Map<string, LastWeekOrder[]>();
+
+      data.forEach((order: any) => {
+        const orderDate = parseISO(order.order_date);
+        const weekStart = startOfWeek(orderDate, { weekStartsOn: 1 });
+        const weekKey = format(weekStart, 'yyyy-MM-dd');
+
+        if (!ordersByWeek.has(weekKey)) {
+          ordersByWeek.set(weekKey, []);
+        }
+        ordersByWeek.get(weekKey)!.push(order as LastWeekOrder);
+      });
+
+      // Get the most recent week's orders
+      const weeks = Array.from(ordersByWeek.keys()).sort().reverse();
+      if (weeks.length > 0) {
+        const mostRecentWeekOrders = ordersByWeek.get(weeks[0]) || [];
+        setLastWeekOrders(mostRecentWeekOrders);
+        return mostRecentWeekOrders;
+      }
+
+      setLastWeekOrders([]);
+      return [];
     } catch (error) {
-      // Only log actual errors, not "no rows" which is expected
-      console.error("Error fetching last order:", error);
-      return null;
+      console.error("Error fetching last week orders:", error);
+      return [];
     } finally {
       setLoading(false);
     }
   };
 
-  const reorderToCart = async () => {
+  // Reorder last week's orders to next week
+  const reorderWeekToCart = async () => {
     setLoading(true);
     try {
-      let order = lastOrder;
-      if (!order) {
-        order = await fetchLastOrder();
+      let orders = lastWeekOrders;
+      if (!orders || orders.length === 0) {
+        orders = await fetchLastWeekOrders();
       }
 
-      if (!order || !order.order_details?.length) {
-        toast.error("No previous order found");
+      if (!orders || orders.length === 0) {
+        toast.error("No previous week orders found");
         return false;
       }
 
       const currentWeek = getCurrentWeek();
-      const targetDate = format(currentWeek.weekDays[0], "yyyy-MM-dd");
+      const nextWeekStart = currentWeek.weekDays[0];
 
-      // Set the child and date
-      if (order.children) {
-        setSelectedChild(order.child_id);
-      }
-      setSelectedDate(targetDate);
+      let itemsAdded = 0;
+      const childrenNames = new Set<string>();
 
-      // Add each item to cart
-      for (const detail of order.order_details) {
-        if (detail.menu_items) {
-          const portionType =
-            detail.portion_type === "half" ? "Half Order" : "Full Order";
-          addItem(
-            order.child_id,
-            targetDate,
-            detail.menu_items,
-            portionType as "Full Order" | "Half Order",
-            detail.unit_price_at_time_of_order || detail.menu_items.base_price
-          );
+      // Add each order from last week to the corresponding day in next week
+      for (const order of orders) {
+        const orderDate = parseISO(order.order_date);
+        const orderDayOfWeek = (orderDate.getDay() + 6) % 7; // Convert to Monday=0
+
+        // Map to next week's corresponding day
+        const targetDate = format(
+          addDays(nextWeekStart, orderDayOfWeek),
+          "yyyy-MM-dd"
+        );
+
+        childrenNames.add(order.children?.name || "");
+
+        // Add each item to cart
+        for (const detail of order.order_details) {
+          if (detail.menu_items) {
+            const portionType =
+              detail.portion_type === "half" ? "Half Order" : "Full Order";
+            addItem(
+              order.child_id,
+              targetDate,
+              detail.menu_items,
+              portionType as "Full Order" | "Half Order",
+              detail.unit_price_at_time_of_order || detail.menu_items.base_price
+            );
+            itemsAdded++;
+          }
         }
       }
 
-      toast.success(
-        `Added previous order for ${order.children?.name || "your child"}`,
-        {
-          description: `Week of ${currentWeek.shortLabel}. Please review dates.`,
-          action: {
-            label: "View Cart",
-            onClick: () => (window.location.href = "/dashboard/cart"),
-          },
-        }
-      );
+      const childrenList = Array.from(childrenNames).filter(Boolean).join(", ");
+
+      toast.success(`Reordered last week for ${childrenList}`, {
+        description: `${itemsAdded} items added for week of ${currentWeek.shortLabel}`,
+        action: {
+          label: "View Cart",
+          onClick: () => (window.location.href = "/dashboard/cart"),
+        },
+      });
 
       return true;
     } catch (error) {
@@ -144,8 +177,8 @@ export function useReorder() {
 
   return {
     loading,
-    lastOrder,
-    fetchLastOrder,
-    reorderToCart,
+    lastWeekOrders,
+    fetchLastWeekOrders,
+    reorderWeekToCart,
   };
 }

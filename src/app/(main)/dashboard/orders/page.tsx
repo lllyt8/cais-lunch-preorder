@@ -4,13 +4,15 @@ import { useEffect, useState, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { ChevronDown, ChevronUp, Calendar, User, ShoppingBag } from 'lucide-react'
+import { ChevronDown, ChevronUp, Calendar, User, ShoppingBag, RefreshCw } from 'lucide-react'
 import { formatCurrency } from '@/lib/stripe'
-import { format, parseISO, startOfWeek, endOfWeek } from 'date-fns'
+import { format, parseISO, startOfWeek, endOfWeek, addDays } from 'date-fns'
 import type { Order, Child, OrderDetail, MenuItem } from '@/types/database'
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { toast } from 'sonner'
+import { useCart } from '@/hooks/use-cart'
+import { useWeekSelector } from '@/hooks/use-week-selector'
 
 interface OrderWithDetails extends Order {
   children: Child
@@ -41,10 +43,14 @@ interface WeekGroup {
 export default function OrdersPage() {
   const [orders, setOrders] = useState<OrderWithDetails[]>([])
   const [loading, setLoading] = useState(true)
+  const [reorderingWeekKey, setReorderingWeekKey] = useState<string | null>(null)
   const [expandedWeeks, setExpandedWeeks] = useState<Set<string>>(new Set())
   const [expandedChildren, setExpandedChildren] = useState<Set<string>>(new Set())
   const searchParams = useSearchParams()
+  const router = useRouter()
   const supabase = createClient()
+  const { addItem, setSelectedChild, setSelectedDate } = useCart()
+  const { getCurrentWeek } = useWeekSelector()
 
   // 从 localStorage 清空购物车
   const clearCart = () => {
@@ -179,6 +185,65 @@ export default function OrdersPage() {
     setExpandedChildren(newExpanded)
   }
 
+  // Reorder entire week to next week
+  const handleReorderWeek = async (week: WeekGroup, e: React.MouseEvent) => {
+    e.stopPropagation() // Prevent week collapse
+    setReorderingWeekKey(week.weekKey)
+
+    try {
+      const currentWeek = getCurrentWeek()
+      const nextWeekStart = currentWeek.weekDays[0]
+
+      let itemsAdded = 0
+
+      // Iterate through all children in this week
+      for (const childGroup of week.children) {
+        // Iterate through all days for this child
+        for (const dayOrder of childGroup.days) {
+          const order = dayOrder.order
+
+          // Calculate day of week offset (0 = Monday, 4 = Friday)
+          const orderDate = parseISO(order.order_date)
+          const orderDayOfWeek = (orderDate.getDay() + 6) % 7 // Convert Sunday=0 to Monday=0
+
+          // Map to next week's corresponding day
+          const targetDate = format(
+            addDays(nextWeekStart, orderDayOfWeek),
+            'yyyy-MM-dd'
+          )
+
+          // Add each item to cart
+          for (const detail of order.order_details) {
+            if (detail.menu_items) {
+              const portionType = detail.portion_type === 'half' ? 'Half Order' : 'Full Order'
+              addItem(
+                order.child_id,
+                targetDate,
+                detail.menu_items,
+                portionType as 'Full Order' | 'Half Order',
+                detail.unit_price_at_time_of_order || detail.menu_items.base_price
+              )
+              itemsAdded++
+            }
+          }
+        }
+      }
+
+      toast.success(`Reordered entire week!`, {
+        description: `${itemsAdded} items added to cart for week of ${currentWeek.shortLabel}`,
+        action: {
+          label: 'View Cart',
+          onClick: () => router.push('/dashboard/cart'),
+        },
+      })
+    } catch (error) {
+      console.error('Error reordering week:', error)
+      toast.error('Failed to reorder week. Please try again.')
+    } finally {
+      setReorderingWeekKey(null)
+    }
+  }
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'paid':
@@ -230,25 +295,43 @@ export default function OrdersPage() {
         {weekGroups.map((week) => (
           <Card key={week.weekKey} className="bg-white border-gray-200 shadow-sm">
             {/* Week Header */}
-            <button
-              onClick={() => toggleWeek(week.weekKey)}
-              className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <Calendar className="h-5 w-5 text-orange-500" />
-                <div className="text-left">
-                  <p className="text-gray-900 font-semibold">{week.weekLabel}</p>
-                  <p className="text-gray-600 text-sm">{week.children.length} {week.children.length === 1 ? 'child' : 'children'}</p>
+            <div className="p-4">
+              <div className="flex items-center justify-between">
+                <button
+                  onClick={() => toggleWeek(week.weekKey)}
+                  className="flex-1 flex items-center gap-3 hover:opacity-80 transition-opacity"
+                >
+                  <Calendar className="h-5 w-5 text-orange-500" />
+                  <div className="text-left">
+                    <p className="text-gray-900 font-semibold">{week.weekLabel}</p>
+                    <p className="text-gray-600 text-sm">{week.children.length} {week.children.length === 1 ? 'child' : 'children'}</p>
+                  </div>
+                </button>
+
+                <div className="flex items-center gap-3">
+                  <p className="text-orange-500 font-bold text-lg">{formatCurrency(week.total)}</p>
+
+                  {/* Reorder Week Button */}
+                  <Button
+                    onClick={(e) => handleReorderWeek(week, e)}
+                    disabled={reorderingWeekKey === week.weekKey}
+                    size="sm"
+                    variant="outline"
+                    className="text-orange-600 border-orange-300 hover:bg-orange-50"
+                  >
+                    <RefreshCw className={`h-4 w-4 mr-1 ${reorderingWeekKey === week.weekKey ? 'animate-spin' : ''}`} />
+                    {reorderingWeekKey === week.weekKey ? 'Adding...' : 'Reorder Week'}
+                  </Button>
+
+                  <button onClick={() => toggleWeek(week.weekKey)} className="p-1">
+                    {expandedWeeks.has(week.weekKey) ?
+                      <ChevronUp className="h-5 w-5 text-gray-400" /> :
+                      <ChevronDown className="h-5 w-5 text-gray-400" />
+                    }
+                  </button>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <p className="text-orange-500 font-bold text-lg">{formatCurrency(week.total)}</p>
-                {expandedWeeks.has(week.weekKey) ? 
-                  <ChevronUp className="h-5 w-5 text-gray-400" /> : 
-                  <ChevronDown className="h-5 w-5 text-gray-400" />
-                }
-              </div>
-            </button>
+            </div>
 
             {/* Week Content */}
             {expandedWeeks.has(week.weekKey) && (
@@ -287,7 +370,7 @@ export default function OrdersPage() {
                             <div key={day.order.id} className="p-4 pl-12 border-t border-gray-100 first:border-t-0">
                               {/* Day Header */}
                               <div className="flex items-center justify-between mb-3">
-                                <div>
+                                <div className="flex-1">
                                   <p className="text-gray-700 font-medium">
                                     {format(parseISO(day.order.order_date), 'EEEE, MMM d, yyyy')}
                                   </p>
@@ -295,7 +378,9 @@ export default function OrdersPage() {
                                     {getStatusBadge(day.order.status)}
                                   </div>
                                 </div>
-                                <p className="text-orange-500 font-bold">{formatCurrency(day.order.total_amount)}</p>
+                                <div className="flex items-center gap-3">
+                                  <p className="text-orange-500 font-bold">{formatCurrency(day.order.total_amount)}</p>
+                                </div>
                               </div>
 
                               {/* Order Items */}
@@ -309,7 +394,7 @@ export default function OrdersPage() {
                                       </p>
                                     </div>
                                     <p className="text-gray-700 font-medium">
-                                      {formatCurrency(item.unit_price * item.quantity)}
+                                      {formatCurrency(item.unit_price_at_time_of_order * item.quantity)}
                                     </p>
                                   </div>
                                 ))}

@@ -29,48 +29,35 @@ export async function POST(request: Request) {
       );
     }
 
-    // 先创建待支付订单记录到数据库
-    const pendingOrderIds: string[] = [];
+    // 将订单数据保存到 metadata（支付成功后由 webhook 创建订单）
+    // 注意：Stripe metadata 有500字符限制，所以我们压缩数据
+    const ordersMetadata = JSON.stringify(ordersData);
 
-    for (const order of ordersData) {
-      // 创建订单记录（状态为 pending_payment）
-      const { data: orderRecord, error: orderError } = await supabase
-        .from("orders")
-        .insert({
-          parent_id: user.id,
-          child_id: order.childId,
-          order_date: order.date,
-          total_amount: order.total,
-          status: "pending_payment", // 等待支付
-          fulfillment_status: "pending_delivery",
-        })
-        .select()
-        .single();
+    // 验证订单总额
+    const totalAmount = ordersData.reduce((sum: number, order: any) => sum + order.total, 0);
+    if (totalAmount <= 0) {
+      return NextResponse.json(
+        { error: "Order total must be greater than $0" },
+        { status: 400 }
+      );
+    }
 
-      if (orderError || !orderRecord) {
-        console.error("Error creating order:", orderError);
-        throw new Error("Failed to create order record");
-      }
+    // Stripe 要求最低金额为 $0.50
+    if (totalAmount < 0.50) {
+      return NextResponse.json(
+        { error: "Order total must be at least $0.50" },
+        { status: 400 }
+      );
+    }
 
-      // 创建订单项（注意：表名是 order_details，字段是 unit_price_at_time_of_order）
-      const orderItems = order.items.map((item: any) => ({
-        order_id: orderRecord.id,
-        menu_item_id: item.menu_item_id,
-        quantity: item.quantity,
-        unit_price_at_time_of_order: item.unit_price,
-        portion_type: item.portion,
-      }));
-
-      const { error: itemsError } = await supabase
-        .from("order_details")
-        .insert(orderItems);
-
-      if (itemsError) {
-        console.error("Error creating order items:", itemsError);
-        throw new Error("Failed to create order items");
-      }
-
-      pendingOrderIds.push(orderRecord.id);
+    // 如果 metadata 太大，我们需要另一种方式存储
+    if (ordersMetadata.length > 500) {
+      // 方案：在数据库创建一个临时的 session_data 表，或者使用其他存储
+      // 这里暂时抛出错误，实际项目中应该用数据库存储
+      return NextResponse.json(
+        { error: "Order data too large. Please contact support." },
+        { status: 400 }
+      );
     }
 
     // 创建 line items（基于购物车数据）
@@ -100,7 +87,7 @@ export async function POST(request: Request) {
         cancelUrl || `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/cart`,
       metadata: {
         user_id: user.id,
-        order_ids: pendingOrderIds.join(","), // 只保存订单ID列表，避免超过500字符限制
+        orders_data: ordersMetadata, // 存储完整订单数据，支付成功后由 webhook 创建订单
       },
       customer_email: user.email,
       ui_mode: "hosted",

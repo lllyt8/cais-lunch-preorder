@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 
@@ -20,55 +20,77 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
     }
 
-    const supabase = await createClient();
+    // Use service role client to bypass RLS since webhooks are called by Stripe
+    const supabase = createServiceRoleClient();
 
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
 
-        // 处理订单支付 - 支付成功后更新订单状态
-        if (session.metadata?.order_ids) {
-          const orderIds = session.metadata.order_ids.split(",");
+        // 支付成功后创建订单
+        if (session.metadata?.orders_data) {
+          try {
+            const ordersData = JSON.parse(session.metadata.orders_data);
+            const userId = session.metadata.user_id;
 
-          // 更新所有订单状态为已支付（注意：数据库中没有 payment_status 字段）
-          const { error: updateError } = await supabase
-            .from("orders")
-            .update({
-              status: "confirmed",
-              fulfillment_status: "pending_delivery",
-              stripe_payment_intent_id: session.payment_intent as string,
-            })
-            .in("id", orderIds);
+            if (!userId) {
+              console.error("No user_id in session metadata");
+              break;
+            }
 
-          if (updateError) {
-            console.error("Error updating orders:", updateError);
-          } else {
-            console.log(`Orders ${orderIds.join(", ")} marked as paid`);
+            // 为每个订单创建数据库记录
+            for (const order of ordersData) {
+              // 创建订单记录（状态直接为 paid）
+              const { data: orderRecord, error: orderError } = await supabase
+                .from("orders")
+                .insert({
+                  parent_id: userId,
+                  child_id: order.childId,
+                  order_date: order.date,
+                  total_amount: order.total,
+                  status: "paid", // 直接设置为已支付
+                  fulfillment_status: "pending_delivery",
+                  stripe_payment_intent_id: session.payment_intent as string,
+                })
+                .select()
+                .single();
+
+              if (orderError || !orderRecord) {
+                console.error("Error creating order:", orderError);
+                continue; // 继续处理其他订单
+              }
+
+              // 创建订单详情
+              const orderItems = order.items.map((item: any) => ({
+                order_id: orderRecord.id,
+                menu_item_id: item.menu_item_id,
+                quantity: item.quantity,
+                unit_price_at_time_of_order: item.unit_price,
+                portion_type: item.portion,
+              }));
+
+              const { error: itemsError } = await supabase
+                .from("order_details")
+                .insert(orderItems);
+
+              if (itemsError) {
+                console.error("Error creating order items:", itemsError);
+                // 如果订单详情创建失败，删除订单
+                await supabase.from("orders").delete().eq("id", orderRecord.id);
+              } else {
+                console.log(`Order ${orderRecord.id} created successfully for ${order.date}`);
+              }
+            }
+          } catch (error) {
+            console.error("Error processing orders from metadata:", error);
           }
         }
         break;
       }
 
       case "checkout.session.expired": {
-        const session = event.data.object as Stripe.Checkout.Session;
-
-        // 取消过期的待支付订单
-        if (session.metadata?.order_ids) {
-          const orderIds = session.metadata.order_ids.split(",");
-
-          const { error: cancelError } = await supabase
-            .from("orders")
-            .update({
-              status: "cancelled",
-            })
-            .in("id", orderIds);
-
-          if (cancelError) {
-            console.error("Error cancelling orders:", cancelError);
-          } else {
-            console.log(`Orders ${orderIds.join(", ")} cancelled due to session expiry`);
-          }
-        }
+        // 支付会话过期 - 由于我们不再预先创建订单，这里不需要做任何事情
+        console.log("Checkout session expired - no action needed");
         break;
       }
 

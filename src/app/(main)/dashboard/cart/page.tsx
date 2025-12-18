@@ -10,7 +10,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { formatCurrency } from '@/lib/stripe'
 import { calculatePriceBreakdown } from '@/lib/pricing'
-import { format, parseISO, startOfWeek, endOfWeek } from 'date-fns'
+import { format, parseISO, startOfWeek, addDays } from 'date-fns'
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { toast } from 'sonner'
 
@@ -106,7 +106,7 @@ export default function CartPage() {
     const child = children?.find(c => c.id === childId)
     const dateObj = parseISO(dateStr)
     const weekStart = startOfWeek(dateObj, { weekStartsOn: 1 })
-    const weekEnd = endOfWeek(dateObj, { weekStartsOn: 1 })
+    const weekEnd = addDays(weekStart, 4) // Friday (Mon + 4 days)
     const weekKey = format(weekStart, 'yyyy-MM-dd')
     const weekLabel = `${format(weekStart, 'MMM d')} - ${format(weekEnd, 'd')}`
     

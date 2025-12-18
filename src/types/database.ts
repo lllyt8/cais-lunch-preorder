@@ -52,7 +52,7 @@ export interface OrderDetail {
   order_id: string;
   menu_item_id: string;
   quantity: number;
-  unit_price: number;
+  unit_price_at_time_of_order: number;
   portion_type: "Full Order" | "Half Order";
 }
 

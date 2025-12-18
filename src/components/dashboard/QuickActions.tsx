@@ -2,21 +2,33 @@
 
 import { RefreshCw, Heart, ChevronRight, UtensilsCrossed } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { useReorder } from '@/hooks/use-reorder'
 import { useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 
 export function QuickActions() {
-  const { lastOrder, fetchLastOrder } = useReorder()
+  const { lastWeekOrders, fetchLastWeekOrders, reorderWeekToCart, loading } = useReorder()
+  const router = useRouter()
 
-  const loadLastOrder = useCallback(() => {
-    fetchLastOrder()
-  }, [fetchLastOrder])
+  const loadLastWeekOrders = useCallback(() => {
+    fetchLastWeekOrders()
+  }, [fetchLastWeekOrders])
 
   useEffect(() => {
-    loadLastOrder()
-  }, [loadLastOrder])
+    loadLastWeekOrders()
+  }, [loadLastWeekOrders])
+
+  const handleReorder = async (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const success = await reorderWeekToCart()
+    if (success) {
+      router.push('/dashboard/cart')
+    }
+  }
 
   return (
     <div className="px-4 py-4 space-y-3">
@@ -25,41 +37,68 @@ export function QuickActions() {
         <h2 className="text-lg font-semibold text-gray-800">Quick Actions</h2>
       </div>
 
-      {/* Reorder Card - Links to Orders History */}
+      {/* Reorder Card - Now with actual reorder functionality */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
       >
-        <Link href="/dashboard/orders">
-          <Card className="bg-white border-gray-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+        {lastWeekOrders && lastWeekOrders.length > 0 ? (
+          <Card className="bg-white border-gray-200 shadow-sm hover:shadow-md transition-shadow">
             <CardContent className="p-0">
               <div className="flex items-center">
                 {/* Left: Icon */}
                 <div className="p-4 bg-orange-50 rounded-l-lg">
                   <RefreshCw className="h-8 w-8 text-orange-500" />
                 </div>
-                
+
                 {/* Middle: Content */}
                 <div className="flex-1 p-4">
-                  <h3 className="font-semibold text-gray-800">Order Again?</h3>
-                  {lastOrder ? (
-                    <p className="text-sm text-gray-500">
-                      Last: {lastOrder.children?.name} - {new Date(lastOrder.order_date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                    </p>
-                  ) : (
-                    <p className="text-sm text-gray-400">See your orders and reorder instantly</p>
-                  )}
+                  <h3 className="font-semibold text-gray-800">Reorder Last Week?</h3>
+                  <p className="text-sm text-gray-500">
+                    {lastWeekOrders.length} order{lastWeekOrders.length > 1 ? 's' : ''} from last week
+                  </p>
                 </div>
-                
-                {/* Right: Arrow */}
+
+                {/* Right: Reorder Button */}
                 <div className="pr-4">
-                  <ChevronRight className="h-5 w-5 text-gray-400" />
+                  <Button
+                    onClick={handleReorder}
+                    disabled={loading}
+                    className="bg-orange-500 hover:bg-orange-600 text-white"
+                    size="sm"
+                  >
+                    {loading ? 'Adding...' : 'Reorder'}
+                  </Button>
                 </div>
               </div>
             </CardContent>
           </Card>
-        </Link>
+        ) : (
+          <Link href="/dashboard/orders">
+            <Card className="bg-white border-gray-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+              <CardContent className="p-0">
+                <div className="flex items-center">
+                  {/* Left: Icon */}
+                  <div className="p-4 bg-orange-50 rounded-l-lg">
+                    <RefreshCw className="h-8 w-8 text-orange-500" />
+                  </div>
+
+                  {/* Middle: Content */}
+                  <div className="flex-1 p-4">
+                    <h3 className="font-semibold text-gray-800">Order Again?</h3>
+                    <p className="text-sm text-gray-400">See your orders and reorder instantly</p>
+                  </div>
+
+                  {/* Right: Arrow */}
+                  <div className="pr-4">
+                    <ChevronRight className="h-5 w-5 text-gray-400" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+        )}
       </motion.div>
 
       {/* Favorites Card */}
