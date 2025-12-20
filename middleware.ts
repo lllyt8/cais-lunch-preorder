@@ -24,7 +24,9 @@ export const config = {
      * - / (landing page - excluded)
      * - /menu (public menu page - excluded)
      * - /login, /register (auth pages - excluded)
+     * - /auth (auth callback - excluded to prevent race conditions)
+     * - /api (API routes - excluded)
      */
-    "/((?!_next/static|_next/image|favicon.ico|menu|login|register|api|mcot_pic|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|menu|login|register|auth|api|mcot_pic|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
