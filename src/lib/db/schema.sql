@@ -5,7 +5,8 @@
 CREATE TABLE users (
     id UUID REFERENCES auth.users NOT NULL PRIMARY KEY,
     email TEXT UNIQUE NOT NULL,
-    name TEXT,
+    first_name TEXT,
+    last_name TEXT,
     phone_number TEXT
 );
 
@@ -13,11 +14,15 @@ CREATE TABLE users (
 CREATE TABLE children (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     parent_id UUID REFERENCES users(id) NOT NULL,
-    name TEXT NOT NULL,
-    class_info TEXT,
+    first_name TEXT NOT NULL,
+    last_name TEXT NOT NULL,
+    grade_level TEXT NOT NULL,
+    class_color TEXT NOT NULL,
     birthday DATE,
     profile_photo_url TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    CONSTRAINT check_grade_level CHECK (grade_level IN ('Preschool', 'Kindergarten', '1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th')),
+    CONSTRAINT check_class_color CHECK (class_color IN ('Red', 'Gold', 'Green', 'Orange', 'Purple', 'Blue'))
 );
 
 -- 3. 菜单项表 (MenuItems): 存储所有可选项
@@ -63,12 +68,22 @@ CREATE TABLE favorites (
     order_details JSONB
 );
 
+-- 7. 临时 checkout session 数据表
+CREATE TABLE checkout_sessions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(id) NOT NULL,
+    orders_data JSONB NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    expires_at TIMESTAMP WITH TIME ZONE DEFAULT (NOW() + INTERVAL '24 hours')
+);
+
 -- Enable Row Level Security
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE children ENABLE ROW LEVEL SECURITY;
 ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE order_details ENABLE ROW LEVEL SECURITY;
 ALTER TABLE favorites ENABLE ROW LEVEL SECURITY;
+ALTER TABLE checkout_sessions ENABLE ROW LEVEL SECURITY;
 
 -- Menu items are public read
 ALTER TABLE menu_items ENABLE ROW LEVEL SECURITY;
@@ -101,6 +116,15 @@ CREATE POLICY "Parents can view own favorites" ON favorites FOR SELECT USING (au
 CREATE POLICY "Parents can insert own favorites" ON favorites FOR INSERT WITH CHECK (auth.uid() = parent_id);
 CREATE POLICY "Parents can update own favorites" ON favorites FOR UPDATE USING (auth.uid() = parent_id);
 CREATE POLICY "Parents can delete own favorites" ON favorites FOR DELETE USING (auth.uid() = parent_id);
+
+-- RLS Policies for checkout_sessions
+CREATE POLICY "Users can view own checkout sessions" ON checkout_sessions FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert own checkout sessions" ON checkout_sessions FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can delete own checkout sessions" ON checkout_sessions FOR DELETE USING (auth.uid() = user_id);
+
+-- Indexes for checkout_sessions
+CREATE INDEX idx_checkout_sessions_user_id ON checkout_sessions(user_id);
+CREATE INDEX idx_checkout_sessions_expires_at ON checkout_sessions(expires_at);
 
 -- Function to handle new user signup
 CREATE OR REPLACE FUNCTION public.handle_new_user()

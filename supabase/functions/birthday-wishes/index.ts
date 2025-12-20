@@ -12,7 +12,8 @@ const corsHeaders = {
 
 interface Child {
   id: string;
-  name: string;
+  first_name: string;
+  last_name: string;
   birthday: string;
   parent_id: string;
 }
@@ -45,7 +46,7 @@ Deno.serve(async (req) => {
     // Note: This query matches the month and day portion of the birthday
     const { data: birthdayChildren, error: childrenError } = await supabase
       .from("children")
-      .select("id, name, birthday, parent_id")
+      .select("id, first_name, last_name, birthday, parent_id")
       .not("birthday", "is", null);
 
     if (childrenError) {
@@ -96,25 +97,26 @@ Deno.serve(async (req) => {
 
       // Here you would integrate with Resend or Twilio
       // For now, we'll log the birthday wish
+      const childFullName = `${child.first_name} ${child.last_name}`;
       const birthdayMessage = {
         to: parent.email,
-        subject: `🎂 Happy Birthday to ${child.name}!`,
+        subject: `🎂 Happy Birthday to ${childFullName}!`,
         body: `
           Dear Parent,
-          
-          We want to wish ${child.name} a very Happy Birthday! 🎉
-          
+
+          We want to wish ${childFullName} a very Happy Birthday! 🎉
+
           As a special gift, here's a $5 credit code for your next lunch order:
-          
+
           Gift Code: ${giftCode}
-          
-          We hope ${child.name} has a wonderful day filled with joy and delicious food!
-          
+
+          We hope ${childFullName} has a wonderful day filled with joy and delicious food!
+
           Best wishes,
           CAIS Lunch Team
         `,
         giftCode,
-        childName: child.name,
+        childName: childFullName,
       };
 
       // TODO: Integrate with Resend API
@@ -133,7 +135,7 @@ Deno.serve(async (req) => {
       //     Deno.env.get('TWILIO_AUTH_TOKEN')
       //   )
       //   await twilio.messages.create({
-      //     body: `🎂 Happy Birthday to ${child.name}! Use code ${giftCode} for $5 off your next CAIS Lunch order!`,
+      //     body: `🎂 Happy Birthday to ${childFullName}! Use code ${giftCode} for $5 off your next CAIS Lunch order!`,
       //     from: Deno.env.get('TWILIO_PHONE_NUMBER'),
       //     to: parent.phone_number,
       //   })
@@ -154,7 +156,7 @@ Deno.serve(async (req) => {
         .eq("id", parent.id);
 
       results.push({
-        childName: child.name,
+        childName: childFullName,
         parentEmail: parent.email,
         giftCode,
         status: "sent",

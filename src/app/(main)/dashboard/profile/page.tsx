@@ -14,7 +14,8 @@ import Link from 'next/link'
 interface UserProfile {
   id: string
   email: string
-  name?: string
+  first_name?: string
+  last_name?: string
   phone_number?: string
 }
 
@@ -23,7 +24,8 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true)
   const [editingName, setEditingName] = useState(false)
   const [editingPhone, setEditingPhone] = useState(false)
-  const [name, setName] = useState('')
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
   const [phone, setPhone] = useState('')
   const [saving, setSaving] = useState(false)
   const router = useRouter()
@@ -44,7 +46,8 @@ export default function ProfilePage() {
         .single()
 
       setProfile(data as UserProfile)
-      setName(data?.name || data?.email?.split('@')[0] || '')
+      setFirstName(data?.first_name || '')
+      setLastName(data?.last_name || '')
       setPhone(data?.phone_number || '')
       setLoading(false)
     }
@@ -58,11 +61,11 @@ export default function ProfilePage() {
 
     const { error } = await supabase
       .from('users')
-      .update({ name })
+      .update({ first_name: firstName, last_name: lastName })
       .eq('id', profile.id)
 
     if (!error) {
-      setProfile({ ...profile, name })
+      setProfile({ ...profile, first_name: firstName, last_name: lastName })
       setEditingName(false)
     }
     setSaving(false)
@@ -108,11 +111,13 @@ export default function ProfilePage() {
       >
         <Avatar className="h-24 w-24 mb-4 ring-4 ring-orange-100 shadow-md">
           <AvatarFallback className="bg-gradient-to-br from-orange-400 to-orange-500 text-white text-3xl font-bold">
-            {(profile?.name || profile?.email)?.charAt(0).toUpperCase() || 'U'}
+            {profile?.first_name?.[0]?.toUpperCase() || profile?.email?.[0]?.toUpperCase() || 'U'}
           </AvatarFallback>
         </Avatar>
         <h1 className="text-xl font-bold text-gray-800">
-          {profile?.name || profile?.email?.split('@')[0] || 'User'}
+          {profile?.first_name && profile?.last_name
+            ? `${profile.first_name} ${profile.last_name}`
+            : profile?.email?.split('@')[0] || 'User'}
         </h1>
         <p className="text-gray-500 text-sm">{profile?.email}</p>
       </motion.div>
@@ -128,22 +133,32 @@ export default function ProfilePage() {
             <CardTitle className="text-gray-800 text-base">Profile Information</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {/* Name Field */}
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50">
-              <User className="h-5 w-5 text-gray-400" />
+            {/* Name Fields */}
+            <div className="flex items-start gap-3 p-3 rounded-lg bg-gray-50">
+              <User className="h-5 w-5 text-gray-400 mt-1" />
               <div className="flex-1">
-                <p className="text-gray-400 text-xs">Name</p>
+                <p className="text-gray-400 text-xs mb-2">Name</p>
                 {editingName ? (
-                  <Input
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="text-sm h-8 mt-1 bg-white"
-                    placeholder="Enter your name"
-                    autoFocus
-                  />
+                  <div className="space-y-2">
+                    <Input
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      className="text-sm h-8 bg-white"
+                      placeholder="First name"
+                      autoFocus
+                    />
+                    <Input
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      className="text-sm h-8 bg-white"
+                      placeholder="Last name"
+                    />
+                  </div>
                 ) : (
                   <p className="text-gray-700 text-sm">
-                    {profile?.name || profile?.email?.split('@')[0] || 'Not set'}
+                    {profile?.first_name && profile?.last_name
+                      ? `${profile.first_name} ${profile.last_name}`
+                      : 'Not set'}
                   </p>
                 )}
               </div>
@@ -155,7 +170,8 @@ export default function ProfilePage() {
                     className="text-gray-500 h-8"
                     onClick={() => {
                       setEditingName(false)
-                      setName(profile?.name || profile?.email?.split('@')[0] || '')
+                      setFirstName(profile?.first_name || '')
+                      setLastName(profile?.last_name || '')
                     }}
                     disabled={saving}
                   >

@@ -223,14 +223,14 @@ export default function OrderPage() {
               }`}
             >
               <Avatar className="h-10 w-10">
-                <AvatarFallback className={`${getAvatarColor(child.name)} text-white`}>
-                  {getInitials(child.name)}
+                <AvatarFallback className={`${getAvatarColor(`${child.first_name} ${child.last_name}`)} text-white`}>
+                  {getInitials(`${child.first_name} ${child.last_name}`)}
                 </AvatarFallback>
               </Avatar>
               <span className={`text-xs md:text-sm font-medium ${
                 selectedChildId === child.id ? 'text-orange-600' : 'text-gray-700'
               }`}>
-                {child.name}
+                {child.first_name}
               </span>
             </button>
           ))}
@@ -330,7 +330,10 @@ export default function OrderPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-gray-600 text-sm">
-                {children.find(c => c.id === selectedChildId)?.name} - {WEEKDAY_LABELS[selectedDate]} ({format(getDateForWeekday(selectedDate), 'M/d')})
+                {(() => {
+                  const child = children.find(c => c.id === selectedChildId)
+                  return child ? `${child.first_name} ${child.last_name}` : ''
+                })()} - {WEEKDAY_LABELS[selectedDate]} ({format(getDateForWeekday(selectedDate), 'M/d')})
               </p>
               <p className="text-gray-900 font-semibold text-lg">
                 {currentCartItems.length} items · <span className="text-orange-500">${currentCartTotal.toFixed(2)}</span>
@@ -384,7 +387,10 @@ export default function OrderPage() {
           <DialogHeader>
             <DialogTitle className="text-gray-900">Missing Orders</DialogTitle>
             <DialogDescription className="text-gray-600">
-              The following days don't have lunch orders for {children.find(c => c.id === selectedChildId)?.name}:
+              The following days don't have lunch orders for {(() => {
+                const child = children.find(c => c.id === selectedChildId)
+                return child ? `${child.first_name} ${child.last_name}` : ''
+              })()}:
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-wrap gap-2 py-4">

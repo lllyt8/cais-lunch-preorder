@@ -1,15 +1,18 @@
 export interface User {
   id: string;
   email: string;
-  name?: string;
+  first_name?: string;
+  last_name?: string;
   phone_number?: string;
 }
 
 export interface Child {
   id: string;
   parent_id: string;
-  name: string;
-  class_info?: string;
+  first_name: string;
+  last_name: string;
+  grade_level: 'Preschool' | 'Kindergarten' | '1st' | '2nd' | '3rd' | '4th' | '5th' | '6th' | '7th' | '8th';
+  class_color: 'Red' | 'Gold' | 'Green' | 'Orange' | 'Purple' | 'Blue';
   birthday?: string;
   profile_photo_url?: string;
   created_at: string;
@@ -70,6 +73,14 @@ export interface CartItem {
   unit_price: number;
 }
 
+export interface CheckoutSession {
+  id: string;
+  user_id: string;
+  orders_data: any;
+  created_at: string;
+  expires_at: string;
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -105,6 +116,11 @@ export interface Database {
         Row: Favorite;
         Insert: Omit<Favorite, "id">;
         Update: Partial<Omit<Favorite, "id">>;
+      };
+      checkout_sessions: {
+        Row: CheckoutSession;
+        Insert: Omit<CheckoutSession, "id" | "created_at" | "expires_at">;
+        Update: Partial<Omit<CheckoutSession, "id" | "created_at" | "expires_at">>;
       };
     };
   };

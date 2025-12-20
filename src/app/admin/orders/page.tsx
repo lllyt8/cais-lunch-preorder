@@ -27,7 +27,7 @@ interface OrderWithDetails extends Order {
     menu_items: MenuItem
   })[]
   users: UserType
-  children?: { name: string }
+  children?: { first_name: string; last_name: string }
 }
 
 export default function AdminOrdersPage() {

@@ -34,8 +34,10 @@ export function useAddChild() {
 
   return useMutation({
     mutationFn: async (child: {
-      name: string;
-      class_info?: string;
+      first_name: string;
+      last_name: string;
+      grade_level: string;
+      class_color: string;
       birthday?: string;
     }) => {
       const {
@@ -47,8 +49,10 @@ export function useAddChild() {
         .from("children")
         .insert({
           parent_id: user.id,
-          name: child.name,
-          class_info: child.class_info || null,
+          first_name: child.first_name,
+          last_name: child.last_name,
+          grade_level: child.grade_level,
+          class_color: child.class_color,
           birthday: child.birthday || null,
         })
         .select()
@@ -73,8 +77,10 @@ export function useUpdateChild() {
       ...updates
     }: {
       id: string;
-      name?: string;
-      class_info?: string;
+      first_name?: string;
+      last_name?: string;
+      grade_level?: string;
+      class_color?: string;
       birthday?: string;
     }) => {
       const { data, error } = await supabase

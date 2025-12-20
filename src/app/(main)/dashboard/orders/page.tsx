@@ -49,15 +49,12 @@ export default function OrdersPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const supabase = createClient()
-  const { addItem, setSelectedChild, setSelectedDate } = useCart()
+  const { addItem, setSelectedChild, setSelectedDate, clearAllCarts } = useCart()
   const { getCurrentWeek } = useWeekSelector()
 
   // 从 localStorage 清空购物车
   const clearCart = () => {
-    if (typeof window !== 'undefined') {
-      const cartKeys = Object.keys(localStorage).filter(key => key.startsWith('cart-'))
-      cartKeys.forEach(key => localStorage.removeItem(key))
-    }
+    clearAllCarts()
   }
 
   useEffect(() => {
@@ -106,7 +103,7 @@ export default function OrdersPage() {
   // Group orders by week -> child -> date
   const weekGroups = useMemo(() => {
     const groups: WeekGroup[] = []
-    
+
     orders.forEach((order) => {
       const orderDate = parseISO(order.order_date)
       const weekStart = startOfWeek(orderDate, { weekStartsOn: 1 })
@@ -133,7 +130,9 @@ export default function OrdersPage() {
       if (!childGroup) {
         childGroup = {
           childId: order.child_id,
-          childName: order.children?.name || 'Unknown',
+          childName: order.children?.first_name && order.children?.last_name
+            ? `${order.children.first_name} ${order.children.last_name}`
+            : 'Unknown',
           days: [],
           total: 0
         }
@@ -160,7 +159,7 @@ export default function OrdersPage() {
         )
       })
     })
-    
+
     return groups
   }, [orders])
 
@@ -373,8 +372,11 @@ export default function OrdersPage() {
                                   <p className="text-gray-700 font-medium">
                                     {format(parseISO(day.order.order_date), 'EEEE, MMM d, yyyy')}
                                   </p>
-                                  <div className="flex items-center gap-2 mt-1">
+                                  <div className="flex items-center gap-2 mt-1 flex-wrap">
                                     {getStatusBadge(day.order.status)}
+                                    <span className="text-xs text-gray-500">
+                                      Ordered on: {format(parseISO(day.order.created_at), 'MMM d, yyyy h:mm a')}
+                                    </span>
                                   </div>
                                 </div>
                                 <div className="flex items-center gap-3">

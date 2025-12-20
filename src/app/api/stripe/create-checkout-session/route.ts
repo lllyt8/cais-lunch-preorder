@@ -29,10 +29,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // 将订单数据保存到 metadata（支付成功后由 webhook 创建订单）
-    // 注意：Stripe metadata 有500字符限制，所以我们压缩数据
-    const ordersMetadata = JSON.stringify(ordersData);
-
     // 验证订单总额
     const totalAmount = ordersData.reduce((sum: number, order: any) => sum + order.total, 0);
     if (totalAmount <= 0) {
@@ -50,13 +46,21 @@ export async function POST(request: Request) {
       );
     }
 
-    // 如果 metadata 太大，我们需要另一种方式存储
-    if (ordersMetadata.length > 500) {
-      // 方案：在数据库创建一个临时的 session_data 表，或者使用其他存储
-      // 这里暂时抛出错误，实际项目中应该用数据库存储
+    // 将订单数据保存到临时表
+    const { data: sessionData, error: sessionError } = await supabase
+      .from("checkout_sessions")
+      .insert({
+        user_id: user.id,
+        orders_data: ordersData,
+      })
+      .select()
+      .single();
+
+    if (sessionError || !sessionData) {
+      console.error("Error creating checkout session data:", sessionError);
       return NextResponse.json(
-        { error: "Order data too large. Please contact support." },
-        { status: 400 }
+        { error: "Failed to save order data" },
+        { status: 500 }
       );
     }
 
@@ -87,7 +91,7 @@ export async function POST(request: Request) {
         cancelUrl || `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/cart`,
       metadata: {
         user_id: user.id,
-        orders_data: ordersMetadata, // 存储完整订单数据，支付成功后由 webhook 创建订单
+        session_data_id: sessionData.id, // 只存储临时表的 ID
       },
       customer_email: user.email,
       ui_mode: "hosted",

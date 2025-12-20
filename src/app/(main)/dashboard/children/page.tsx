@@ -9,6 +9,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
 import type { Child } from '@/types/database'
 
@@ -18,8 +19,10 @@ export default function ChildrenPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingChild, setEditingChild] = useState<Child | null>(null)
   const [formData, setFormData] = useState({
-    name: '',
-    class_info: '',
+    first_name: '',
+    last_name: '',
+    grade_level: '',
+    class_color: '',
     birthday: '',
   })
   const supabase = createClient()
@@ -56,8 +59,10 @@ export default function ChildrenPage() {
       const { error } = await supabase
         .from('children')
         .update({
-          name: formData.name,
-          class_info: formData.class_info || null,
+          first_name: formData.first_name,
+          last_name: formData.last_name,
+          grade_level: formData.grade_level,
+          class_color: formData.class_color,
           birthday: formData.birthday || null,
         })
         .eq('id', editingChild.id)
@@ -74,8 +79,10 @@ export default function ChildrenPage() {
         .from('children')
         .insert({
           parent_id: user.id,
-          name: formData.name,
-          class_info: formData.class_info || null,
+          first_name: formData.first_name,
+          last_name: formData.last_name,
+          grade_level: formData.grade_level,
+          class_color: formData.class_color,
           birthday: formData.birthday || null,
         })
 
@@ -89,14 +96,16 @@ export default function ChildrenPage() {
 
     setDialogOpen(false)
     setEditingChild(null)
-    setFormData({ name: '', class_info: '', birthday: '' })
+    setFormData({ first_name: '', last_name: '', grade_level: '', class_color: '', birthday: '' })
   }
 
   const handleEdit = (child: Child) => {
     setEditingChild(child)
     setFormData({
-      name: child.name,
-      class_info: child.class_info || '',
+      first_name: child.first_name,
+      last_name: child.last_name,
+      grade_level: child.grade_level,
+      class_color: child.class_color,
       birthday: child.birthday || '',
     })
     setDialogOpen(true)
@@ -120,22 +129,26 @@ export default function ChildrenPage() {
 
   const openAddDialog = () => {
     setEditingChild(null)
-    setFormData({ name: '', class_info: '', birthday: '' })
+    setFormData({ first_name: '', last_name: '', grade_level: '', class_color: '', birthday: '' })
     setDialogOpen(true)
   }
 
-  const getInitials = (name: string) => {
-    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+  const getInitials = (child: Child) => {
+    return (child.first_name[0] + child.last_name[0]).toUpperCase()
   }
 
-  const getAvatarColor = (name: string) => {
+  const getFullName = (child: Child) => {
+    return `${child.first_name} ${child.last_name}`
+  }
+
+  const getAvatarColor = (child: Child) => {
     const colors = [
       'bg-red-500', 'bg-orange-500', 'bg-amber-500', 'bg-yellow-500',
       'bg-lime-500', 'bg-green-500', 'bg-emerald-500', 'bg-teal-500',
       'bg-cyan-500', 'bg-sky-500', 'bg-blue-500', 'bg-indigo-500',
       'bg-violet-500', 'bg-purple-500', 'bg-fuchsia-500', 'bg-pink-500',
     ]
-    const index = name.charCodeAt(0) % colors.length
+    const index = child.first_name.charCodeAt(0) % colors.length
     return colors[index]
   }
 
@@ -166,29 +179,76 @@ export default function ChildrenPage() {
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="first_name" className="text-gray-700">First Name *</Label>
+                    <Input
+                      id="first_name"
+                      value={formData.first_name}
+                      onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+                      placeholder="First name"
+                      required
+                      className="bg-white border-gray-200 text-gray-900"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="last_name" className="text-gray-700">Last Name *</Label>
+                    <Input
+                      id="last_name"
+                      value={formData.last_name}
+                      onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+                      placeholder="Last name"
+                      required
+                      className="bg-white border-gray-200 text-gray-900"
+                    />
+                  </div>
+                </div>
                 <div className="space-y-2">
-                  <Label htmlFor="name" className="text-gray-700">Name *</Label>
-                  <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="Child's name"
+                  <Label htmlFor="grade_level" className="text-gray-700">Grade Level *</Label>
+                  <Select
+                    value={formData.grade_level}
+                    onValueChange={(value) => setFormData({ ...formData, grade_level: value })}
                     required
-                    className="bg-white border-gray-200 text-gray-900"
-                  />
+                  >
+                    <SelectTrigger className="bg-white border-gray-200 text-gray-900">
+                      <SelectValue placeholder="Select grade level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Preschool">Preschool</SelectItem>
+                      <SelectItem value="Kindergarten">Kindergarten</SelectItem>
+                      <SelectItem value="1st">1st</SelectItem>
+                      <SelectItem value="2nd">2nd</SelectItem>
+                      <SelectItem value="3rd">3rd</SelectItem>
+                      <SelectItem value="4th">4th</SelectItem>
+                      <SelectItem value="5th">5th</SelectItem>
+                      <SelectItem value="6th">6th</SelectItem>
+                      <SelectItem value="7th">7th</SelectItem>
+                      <SelectItem value="8th">8th</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="class_info" className="text-gray-700">Class</Label>
-                  <Input
-                    id="class_info"
-                    value={formData.class_info}
-                    onChange={(e) => setFormData({ ...formData, class_info: e.target.value })}
-                    placeholder="e.g., Grade 3, Class A"
-                    className="bg-white border-gray-200 text-gray-900"
-                  />
+                  <Label htmlFor="class_color" className="text-gray-700">Class Color *</Label>
+                  <Select
+                    value={formData.class_color}
+                    onValueChange={(value) => setFormData({ ...formData, class_color: value })}
+                    required
+                  >
+                    <SelectTrigger className="bg-white border-gray-200 text-gray-900">
+                      <SelectValue placeholder="Select class color" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Red">Red</SelectItem>
+                      <SelectItem value="Gold">Gold</SelectItem>
+                      <SelectItem value="Green">Green</SelectItem>
+                      <SelectItem value="Orange">Orange</SelectItem>
+                      <SelectItem value="Purple">Purple</SelectItem>
+                      <SelectItem value="Blue">Blue</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="birthday" className="text-gray-700">Birthday</Label>
+                  <Label htmlFor="birthday" className="text-gray-700">Birthday (Optional)</Label>
                   <Input
                     id="birthday"
                     type="date"
@@ -249,15 +309,15 @@ export default function ChildrenPage() {
               <Card key={child.id} className="bg-white border-gray-200 shadow-sm">
                 <CardContent className="flex items-center gap-4 p-4">
                   <Avatar className="h-14 w-14">
-                    <AvatarFallback className={`${getAvatarColor(child.name)} text-white text-lg`}>
-                      {getInitials(child.name)}
+                    <AvatarFallback className={`${getAvatarColor(child)} text-white text-lg`}>
+                      {getInitials(child)}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900">{child.name}</h3>
-                    {child.class_info && (
-                      <p className="text-sm text-gray-600">{child.class_info}</p>
-                    )}
+                    <h3 className="font-semibold text-gray-900">{getFullName(child)}</h3>
+                    <p className="text-sm text-gray-600">
+                      {child.grade_level} - {child.class_color}
+                    </p>
                     {child.birthday && (
                       <p className="text-sm text-gray-500">Birthday: {child.birthday}</p>
                     )}
@@ -291,7 +351,8 @@ export default function ChildrenPage() {
               <TableHeader>
                 <TableRow className="border-gray-200 hover:bg-gray-50">
                   <TableHead className="text-gray-700 font-semibold">Child</TableHead>
-                  <TableHead className="text-gray-700 font-semibold">Class</TableHead>
+                  <TableHead className="text-gray-700 font-semibold">Grade</TableHead>
+                  <TableHead className="text-gray-700 font-semibold">Class Color</TableHead>
                   <TableHead className="text-gray-700 font-semibold">Birthday</TableHead>
                   <TableHead className="text-gray-700 font-semibold text-right">Actions</TableHead>
                 </TableRow>
@@ -302,14 +363,15 @@ export default function ChildrenPage() {
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-3">
                         <Avatar>
-                          <AvatarFallback className={`${getAvatarColor(child.name)} text-white`}>
-                            {getInitials(child.name)}
+                          <AvatarFallback className={`${getAvatarColor(child)} text-white`}>
+                            {getInitials(child)}
                           </AvatarFallback>
                         </Avatar>
-                        <span className="text-gray-900">{child.name}</span>
+                        <span className="text-gray-900">{getFullName(child)}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="text-gray-700">{child.class_info || '-'}</TableCell>
+                    <TableCell className="text-gray-700">{child.grade_level}</TableCell>
+                    <TableCell className="text-gray-700">{child.class_color}</TableCell>
                     <TableCell className="text-gray-700">{child.birthday || '-'}</TableCell>
                     <TableCell className="text-right">
                       <Button

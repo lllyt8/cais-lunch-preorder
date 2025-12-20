@@ -135,7 +135,9 @@ export default function CartPage() {
     if (!childGroup) {
       childGroup = {
         childId,
-        childName: child?.name || 'Unknown',
+        childName: child?.first_name && child?.last_name
+          ? `${child.first_name} ${child.last_name}`
+          : 'Unknown',
         days: [],
         total: 0
       }
@@ -355,7 +357,7 @@ export default function CartPage() {
   }
 
   return (
-    <div className="px-4 py-4 pb-32">
+    <div className="px-4 py-4 pb-64">
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         <Button
